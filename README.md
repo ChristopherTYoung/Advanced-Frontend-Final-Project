@@ -15,6 +15,8 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 - records view of innappropriate messages
 - An instruction page for how to add the bot
 - A help message for users that are unfamiliar with the bot
+- Allow non-admin or non-permissive users to make event proposals.
+- Page that allows admins to view proposals and approve/disapprove them
 ## New Things I will need to learn (Risks)
 - I will need to learn how discord bots work. I have never made one before
 - I will need to learn how the AI will be able to analyze if a piece of content or a message are innappropriate
