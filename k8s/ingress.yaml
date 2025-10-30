@@ -24,6 +24,7 @@ metadata:
   name: discord-bot-ingress
   namespace: chris-discord
 spec:
+  ingressClassName: nginx
   rules:
     - host: discord-bot-controller.duckdns.org
       http:
