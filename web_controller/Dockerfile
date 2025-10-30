@@ -3,7 +3,7 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml* ./
 
-RUN if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile --prefer-offline; else pnpm install; fi
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm build
