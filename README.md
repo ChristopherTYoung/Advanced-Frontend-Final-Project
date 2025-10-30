@@ -38,6 +38,10 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 
 #### Delivered
 ##### Rubric Items:
+- Web App Setup
+- Bot/API Setup
+- Kubernetes cluster
+- Deployment Pipeline Setup
 
 ##### Features
 
