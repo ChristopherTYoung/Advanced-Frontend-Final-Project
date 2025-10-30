@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: chris-discord
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: discord-bot-controller.duckdns.org
+      http:
+        paths:
+          - path: /
+            backend:
+              service:
+                name: web-controller-svc
+                port:
+                  number: 80
+
+    - host: discord-bot-controller.duckdns.org 
+      http:
+        paths:
+          - path: /bot
+            backend:
+              service:
+                name: discord-bot-svc
+                port:
+                  number: 8000

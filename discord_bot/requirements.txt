@@ -1,0 +1,5 @@
+discord.py
+fastapi[standard]
+uvicorn[standard]
+python-dotenv
+aiohttp

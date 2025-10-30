@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-controller
+  namespace: chris-discord
+  labels:
+    app: web-controller
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-controller
+  template:
+    metadata:
+      labels:
+        app: web-controller
+    spec:
+      containers:
+        - name: web-controller
+          image: docker.io/christophertyoung/discord_bot_controller:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-controller-svc
+  namespace: chris-discord
+  labels:
+    app: web-controller
+spec:
+  type: ClusterIP
+  selector:
+    app: web-controller
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
