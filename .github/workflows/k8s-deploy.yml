@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     name: Apply k8s manifests
     steps:
       - name: Checkout repo
