@@ -65,5 +65,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/discord_bot_controller:latest
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/discord_bot_controller:${{ steps.increment_version.outputs.new_version }}
+            docker.io/christophertyoung/discord_bot_controller:latest
+            docker.io/christophertyoung/discord_bot_controller:${{ steps.increment_version.outputs.new_version }}
