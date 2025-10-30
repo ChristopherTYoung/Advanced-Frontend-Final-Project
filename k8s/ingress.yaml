@@ -10,6 +10,7 @@ spec:
       http:
         paths:
           - path: /
+            pathType: Prefix
             backend:
               service:
                 name: web-controller-svc
@@ -20,6 +21,7 @@ spec:
       http:
         paths:
           - path: /bot
+            pathType: Prefix
             backend:
               service:
                 name: discord-bot-svc
