@@ -40,3 +40,74 @@
 .read-the-docs {
   color: #888;
 }
+
+.login-btn {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  background: linear-gradient(180deg,#5865f2,#4752c4);
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(72, 61, 139, 0.2);
+}
+.login-btn:hover {
+  filter: brightness(1.05);
+}
+
+.logout-btn {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  background: linear-gradient(180deg,#5865f2,#4752c4);
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(72, 61, 139, 0.2);
+}
+.logout-btn:hover {
+  filter: brightness(1.05);
+}
+
+.card {
+  margin-top: 4rem;
+}
+
+.avatar-card {
+  width: 720px;
+  height: 550px;
+  background-color: #93a9ad;
+  border-radius: 10px;
+  box-shadow: 0 8px 10px;
+  color: #293240;
+  align-content: center;
+}
+
+.avatar {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-container {
+  width: 182px;
+  height: 182px;
+  background-color: #293240;
+  box-shadow: 0 0 2px 2px #293240;
+  border-radius: 50%;
+  justify-self: center;
+}
+
+.spinner {
+  font-size: 1.1rem;
+  color: #666;
+}

@@ -1,34 +1,50 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
+import { useAuth } from './auth'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { user, isLoading, login, logout, getAvatarUrl } = useAuth()
+
+  function handleLogin() {
+    login()
+  }
+
+  const isCallback = user != null
+
+  if (isCallback) {
+    return (
+      <div className="welcome-page">
+        {isLoading ? (
+          <div className="spinner">Loading...</div>
+        ) : user ? (
+          <div className="avatar-card">
+            <button className="logout-btn" onClick={logout}>Logout</button>
+            <div className='avatar-container'>
+              <img className="avatar" src={getAvatarUrl()} alt={`${user.username} avatar`} />
+            </div>
+            <h1>Welcome, {user.username}</h1>
+          </div>
+        ) : (
+          <div className="avatar-card">
+            <h2>No user information available</h2>
+            <p>Please return to the app and click Login.</p>
+            <button onClick={handleLogin}>Login</button>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <div>
+      <button className="login-btn" onClick={handleLogin} aria-label="Login with Discord">
+        Login
+      </button>
+
+      <main className="card">
+        <h1>Welcome</h1>
+        <p className="read-the-docs">Click the Login button to sign in with Discord.</p>
+      </main>
+    </div>
   )
 }
 

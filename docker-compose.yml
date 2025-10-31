@@ -1,0 +1,32 @@
+version: '3.8'
+services:
+  discord_bot:
+    image: python:3.11-slim
+    working_dir: /app
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./discord_bot:/app:delegated
+    entrypoint: >
+      sh -c "python -m pip install --upgrade pip setuptools wheel && \
+      if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi && \
+      fastapi run main.py --reload"
+
+  web-controller:
+    image: node:20-alpine
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - .env
+    working_dir: /app
+    volumes:
+      - ./web_controller:/app
+      - /app/node_modules
+    command: >-
+      sh -c "npm install -g pnpm && pnpm i && pnpm run dev --host 0.0.0.0"
+    depends_on:
+      - discord_bot
