@@ -15,6 +15,9 @@ DISCORD_CLIENT_ID = os.environ.get('VITE_DISCORD_CLIENT_ID')
 DISCORD_CLIENT_SECRET = os.environ.get('VITE_DISCORD_CLIENT_SECRET')
 SESSION_SECRET = os.environ.get('DISCORD_SESSION_SECRET', 'dev-secret-change-me')
 FRONTEND_ORIGINS = os.environ.get('FRONTEND_ORIGINS', 'http://localhost:5173')
+# Optional session cookie configuration for cross-site cookies in production
+DISCORD_SESSION_SAMESITE = os.environ.get('DISCORD_SESSION_SAMESITE', 'lax')
+DISCORD_SESSION_HTTPS_ONLY = os.environ.get('DISCORD_SESSION_HTTPS_ONLY', 'false').lower() in ('1', 'true', 'yes')
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,7 +27,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
+# Configure SessionMiddleware with overrideable SameSite and https-only flags
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    same_site=DISCORD_SESSION_SAMESITE,
+    https_only=DISCORD_SESSION_HTTPS_ONLY,
+)
 
 
 class CodeExchange(BaseModel):

@@ -27,7 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const redirectUri = `${window.location.origin}`
     const scope = import.meta.env.VITE_DISCORD_SCOPE || 'identify email'
     const apiBase = import.meta.env.VITE_DISCORD_BOT_URL || (window as any)?.ENV?.VITE_DISCORD_BOT_URL
-    const api = (path: string) => apiBase ? `${apiBase.replace(/\/$/, '')}${path}` : path
+    const api = (path: string) => apiBase ? `${apiBase.replace(/\/$/, '')}${path}` : `/bot${path}`
 
     useEffect(() => {
         (async () => {
