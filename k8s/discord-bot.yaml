@@ -18,7 +18,6 @@ spec:
       containers:
         - name: discord-bot
           image: docker.io/christophertyoung/discord_bot:latest
-          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
           env:
