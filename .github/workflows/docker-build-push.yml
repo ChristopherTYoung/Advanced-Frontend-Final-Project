@@ -64,6 +64,9 @@ jobs:
           file: ./web_controller/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
+          build-args: |
+            VITE_DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
+            VITE_DISCORD_BOT_URL=${{ secrets.DISCORD_BOT_URL }}
           tags: |
             docker.io/christophertyoung/discord_bot_controller:latest
             docker.io/christophertyoung/discord_bot_controller:${{ steps.increment_version.outputs.new_version }}

@@ -23,10 +23,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isLoading, setIsLoading] = useState(false)
     const size = 240
 
-    const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || ''
+    const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || (window as any)?.ENV?.VITE_DISCORD_CLIENT_ID
     const redirectUri = `${window.location.origin}`
     const scope = import.meta.env.VITE_DISCORD_SCOPE || 'identify email'
-    const apiBase = import.meta.env.VITE_DISCORD_BOT_URL || ''
+    const apiBase = import.meta.env.VITE_DISCORD_BOT_URL || (window as any)?.ENV?.VITE_DISCORD_BOT_URL
     const api = (path: string) => apiBase ? `${apiBase.replace(/\/$/, '')}${path}` : path
 
     useEffect(() => {
