@@ -21,7 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null)
     const [isLoading, setIsLoading] = useState(false)
-    const [size, setSize] = useState(240)
+    const size = 240
 
     const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || ''
     const redirectUri = `${window.location.origin}`
