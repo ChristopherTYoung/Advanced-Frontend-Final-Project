@@ -26,17 +26,17 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: discord-bot-secret
-                  key: DISCORD_CLIENT_ID
+                  key: VITE_DISCORD_CLIENT_ID
             - name: VITE_DISCORD_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: discord-bot-secret
-                  key: DISCORD_CLIENT_SECRET
+                  key: VITE_DISCORD_CLIENT_SECRET
             - name: VITE_DISCORD_BOT_URL
               valueFrom:
                 secretKeyRef:
                   name: discord-bot-secret
-                  key: DISCORD_BOT_URL
+                  key: VITE_DISCORD_BOT_URL
           resources:
             requests:
               cpu: "100m"
