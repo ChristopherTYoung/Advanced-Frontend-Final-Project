@@ -84,7 +84,7 @@
 .avatar-card {
   width: 720px;
   height: 550px;
-  background-color: #93a9ad;
+  background-color: #597377;
   border-radius: 10px;
   box-shadow: 0 8px 10px;
   color: #293240;
@@ -95,14 +95,14 @@
   width: 180px;
   height: 180px;
   border-radius: 50%;
+  box-shadow: 0px 0px 4px 4px #161a22;
   object-fit: cover;
 }
 
 .avatar-container {
-  width: 182px;
-  height: 182px;
-  background-color: #293240;
-  box-shadow: 0 0 2px 2px #293240;
+  width: 183px;
+  height: 183px;
+  box-shadow: 0px 0px 4px 4px #161a2238;
   border-radius: 50%;
   justify-self: center;
 }

@@ -29,7 +29,7 @@ spec:
     - host: discord-bot-controller.duckdns.org
       http:
         paths:
-          - path: /bot
+          - path: /
             pathType: Prefix
             backend:
               service:

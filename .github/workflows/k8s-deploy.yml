@@ -12,6 +12,17 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+      - name: Create/update Kubernetes secret for Discord
+        env:
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          DISCORD_BOT_URL: ${{ secrets.DISCORD_BOT_URL }}
+        run: |
+          kubectl create secret generic discord-bot-secret --namespace chris-discord \
+            --from-literal=VITE_DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID}" \
+            --from-literal=VITE_DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}" \
+            --from-literal=VITE_DISCORD_BOT_URL="${DISCORD_BOT_URL}" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Apply manifests
         run: |

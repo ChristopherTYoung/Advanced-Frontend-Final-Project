@@ -21,6 +21,22 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
+          env:
+            - name: VITE_DISCORD_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: discord-bot-secret
+                  key: DISCORD_CLIENT_ID
+            - name: VITE_DISCORD_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: discord-bot-secret
+                  key: DISCORD_CLIENT_SECRET
+            - name: VITE_DISCORD_BOT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: discord-bot-secret
+                  key: DISCORD_BOT_URL
           resources:
             requests:
               cpu: "100m"
