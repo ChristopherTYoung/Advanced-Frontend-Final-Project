@@ -22,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const size = 240
+    const storageKey = 'discord_user'
 
     const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || (window as any)?.ENV?.VITE_DISCORD_CLIENT_ID
     const redirectUri = `${window.location.origin}`
@@ -30,11 +31,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const api = (path: string) => apiBase ? `${apiBase.replace(/\/$/, '')}${path}` : `/bot${path}`
 
     useEffect(() => {
-        (async () => {
+        const raw = localStorage.getItem(storageKey)
+        if (raw) {
+            const parsed = JSON.parse(raw)
+            setUser(parsed)
+        }
+        ; (async () => {
             const res = await fetch(api('/api/me'), { credentials: 'include' })
             if (res.ok) {
                 const data = await res.json()
-                if (data.user) setUser(data.user)
+                if (data.user) {
+                    setUser(data.user)
+                    localStorage.setItem(storageKey, JSON.stringify(data.user))
+                }
             }
         })()
 
@@ -57,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (resp.ok) {
                         const data = await resp.json()
                         setUser(data.user ?? null)
+                        try { localStorage.setItem(storageKey, JSON.stringify(data.user ?? null)) } catch (e) { }
                     } else {
                         console.warn('Token exchange failed', await resp.text())
                     }
@@ -67,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             })()
         }
-    }, [redirectUri])
+    }, [])
 
 
     function getAvatarUrl() {
@@ -103,6 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     function logout() {
         setUser(null);
+        localStorage.removeItem(storageKey);
         (async () => {
             await fetch(api('/api/logout'), { method: 'POST', credentials: 'include' })
         })()
