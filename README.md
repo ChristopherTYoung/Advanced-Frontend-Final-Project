@@ -73,8 +73,14 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 
 #### Delivered
 ##### Rubric Items:
-
+- Tanstack Query
+- Unit tests in the pipeline
+- Linter
+  
 ##### Features
+- Instructions page for adding the bot
+- Send message to bot from discord
+- Send message to the discord server from frontend
 
 ### Nov 8
 #### Estimates
