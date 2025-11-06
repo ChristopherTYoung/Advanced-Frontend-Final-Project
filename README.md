@@ -69,7 +69,7 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ##### Features:
 - Instructions page for adding the bot
 - Send message to bot from discord
-- Get a response sent to the discord server
+- Send message to the discord server from frontend
 
 #### Delivered
 ##### Rubric Items:
