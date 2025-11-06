@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-const API_BASE_URL = import.meta.env.VITE_DISCORD_BOT_URL || (window as any)?.ENV?.VITE_DISCORD_BOT_URL
+const API_BASE_URL = import.meta.env.VITE_DISCORD_BOT_URL || window.ENV?.VITE_DISCORD_BOT_URL
 
 function api(path: string): string {
   // In development with Vite dev server, use relative URLs so the proxy works

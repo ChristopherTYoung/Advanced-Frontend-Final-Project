@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 type User = {
     id?: string
@@ -19,72 +20,61 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null)
-    const [isLoading, setIsLoading] = useState(false)
     const size = 240
     const storageKey = 'discord_user'
+    const queryClient = useQueryClient()
 
-    const apiBase = import.meta.env.VITE_DISCORD_BOT_URL || (window as any)?.ENV?.VITE_DISCORD_BOT_URL
-    const api = (path: string) => apiBase ? `${apiBase.replace(/\/$/, '')}${path}` : `/bot${path}`
+    const apiBase = import.meta.env.VITE_DISCORD_BOT_URL || window.ENV?.VITE_DISCORD_BOT_URL
+    const api = useCallback((path: string) => apiBase ? `${apiBase.replace(/\/$/, '')}${path}` : `/bot${path}`, [apiBase])
+
+    // Use React Query for /api/me with longer stale time to prevent excessive requests
+    const { data: userData, isLoading } = useQuery({
+        queryKey: ['auth', 'me'],
+        queryFn: async () => {
+            const res = await fetch(api('/api/me'), { credentials: 'include' })
+            if (res.ok) {
+                const data = await res.json()
+                if (data.user) {
+                    localStorage.setItem(storageKey, JSON.stringify(data.user))
+                    return data.user as User
+                }
+            }
+            return null
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes - same as other queries
+        retry: 1,
+        refetchOnWindowFocus: false,
+        // Load initial data from localStorage if available
+        initialData: () => {
+            const raw = localStorage.getItem(storageKey)
+            if (raw) {
+                try {
+                    return JSON.parse(raw) as User
+                } catch {
+                    return null
+                }
+            }
+            return null
+        }
+    })
+
+    const user = userData ?? null
 
     useEffect(() => {
-        // 1) Restore user from localStorage immediately
-        const raw = localStorage.getItem(storageKey)
-        if (raw) {
-            try {
-                const parsed = JSON.parse(raw)
-                setUser(parsed)
-            } catch (e) {
-                // ignore parse errors
-            }
-        }
-
-        // 2) Check if we just returned from OAuth (server redirected with ?auth=success)
+        // Check if we just returned from OAuth (server redirected with ?auth=success)
         const params = new URLSearchParams(window.location.search)
         const authSuccess = params.get('auth')
-        
+
         if (authSuccess === 'success') {
             // Clean up URL
             const url = new URL(window.location.href)
             url.searchParams.delete('auth')
-            ;(window.history as any).replaceState({}, document.title, url.toString())
-            
-            // Fetch user from backend session
-            setIsLoading(true)
-            ;(async () => {
-                try {
-                    const res = await fetch(api('/api/me'), { credentials: 'include' })
-                    if (res.ok) {
-                        const data = await res.json()
-                        if (data.user) {
-                            setUser(data.user)
-                            localStorage.setItem(storageKey, JSON.stringify(data.user))
-                        }
-                    }
-                } catch (err) {
-                    console.error('Error fetching user after auth', err)
-                } finally {
-                    setIsLoading(false)
-                }
-            })()
-        } else {
-            // 3) Normal page load - reconcile with backend session
-            ;(async () => {
-                try {
-                    const res = await fetch(api('/api/me'), { credentials: 'include' })
-                    if (res.ok) {
-                        const data = await res.json()
-                        if (data.user) {
-                            setUser(data.user)
-                            localStorage.setItem(storageKey, JSON.stringify(data.user))
-                        }
-                    }
-                } catch (err) {
-                    // ignore - backend may not be available
-                }
-            })()
+            window.history.replaceState({}, document.title, url.toString())
+
+            // Invalidate and refetch the auth query to get fresh user data
+            queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
         }
-    }, [])
+    }, [queryClient])
 
 
     function getAvatarUrl() {
@@ -103,14 +93,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     function login() {
         // Navigate to server-side login endpoint which will redirect to Discord
-        setIsLoading(true)
         window.location.href = api('/api/auth/login')
     }
 
     function logout() {
-        setUser(null);
-        localStorage.removeItem(storageKey);
-        (async () => {
+        localStorage.removeItem(storageKey)
+        // Invalidate the auth query to clear user data
+        queryClient.setQueryData(['auth', 'me'], null)
+        ;(async () => {
             await fetch(api('/api/logout'), { method: 'POST', credentials: 'include' })
         })()
     }
@@ -122,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
     const ctx = useContext(AuthContext)
     if (!ctx) throw new Error('useAuth must be used within AuthProvider')

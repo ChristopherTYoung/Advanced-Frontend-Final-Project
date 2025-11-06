@@ -14,7 +14,7 @@ function App() {
     login()
   }
 
-  const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || (window as any)?.ENV?.VITE_DISCORD_CLIENT_ID
+  const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || window.ENV?.VITE_DISCORD_CLIENT_ID
   const botInviteUrl = clientId 
     ? `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`
     : ''
