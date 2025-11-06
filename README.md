@@ -48,29 +48,28 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ### Nov 1
 #### Estimates
 ##### Rubric Items:
-- OIDC Auth
+- Discord Auth
 - Auth Context
 
 ##### Features:
-- Login page
-- Settings page
-- Account tab
 
 #### Delivered
 ##### Rubric Items:
-
+- Discord Auth
+- Auth Context
 ##### Features
 
 ### Nov 5
 #### Estimates
 ##### Rubric Items:
 - Tanstack Query
-- Zod
-- DB Setup
+- Unit tests in the pipeline
+- Linter
 
 ##### Features:
-- Notification preferences tab
-- AI Chat Customizations Tab
+- Instructions page for adding the bot
+- Send message to bot from discord
+- Send message to the discord server from frontend
 
 #### Delivered
 ##### Rubric Items:
@@ -80,13 +79,14 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ### Nov 8
 #### Estimates
 ##### Rubric Items:
-- Unit tests in the pipeline
-- Linter
+- Zod
+- DB Setup
 
 ##### Features:
-- Instructions page for adding the bot
-- Send message to bot from discord
-- Get a response sent to the discord server
+- Settings page
+- Account tab
+- Notification preferences tab
+- AI Chat Customizations Tab
 
 #### Delivered
 ##### Rubric Items:
