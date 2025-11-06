@@ -2,3 +2,6 @@ __pycache__
 node_modules
 .env
 .pnpm-store
+htmlcov
+.venv
+.pytest_cache

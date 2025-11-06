@@ -2,6 +2,7 @@
 from typing import List, Dict, Any
 from datetime import datetime
 import discord
+from discord.ext import commands
 
 
 class MessageService:
@@ -68,7 +69,7 @@ class MessageService:
         """Clear all message history."""
         self.message_history = []
     
-    def register_bot_handlers(self, bot: discord.ext.commands.Bot):
+    def register_bot_handlers(self, bot: commands.Bot):
         @bot.event
         async def on_message(message: discord.Message):
             # Ignore messages from the bot itself
