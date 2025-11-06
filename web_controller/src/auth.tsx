@@ -24,56 +24,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const size = 240
     const storageKey = 'discord_user'
 
-    const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || (window as any)?.ENV?.VITE_DISCORD_CLIENT_ID
-    const redirectUri = `${window.location.origin}`
-    const scope = import.meta.env.VITE_DISCORD_SCOPE || 'identify email'
     const apiBase = import.meta.env.VITE_DISCORD_BOT_URL || (window as any)?.ENV?.VITE_DISCORD_BOT_URL
     const api = (path: string) => apiBase ? `${apiBase.replace(/\/$/, '')}${path}` : `/bot${path}`
 
     useEffect(() => {
+        // 1) Restore user from localStorage immediately
         const raw = localStorage.getItem(storageKey)
         if (raw) {
-            const parsed = JSON.parse(raw)
-            setUser(parsed)
-        }
-        ; (async () => {
-            const res = await fetch(api('/api/me'), { credentials: 'include' })
-            if (res.ok) {
-                const data = await res.json()
-                if (data.user) {
-                    setUser(data.user)
-                    localStorage.setItem(storageKey, JSON.stringify(data.user))
-                }
+            try {
+                const parsed = JSON.parse(raw)
+                setUser(parsed)
+            } catch (e) {
+                // ignore parse errors
             }
-        })()
+        }
 
+        // 2) Check if we just returned from OAuth (server redirected with ?auth=success)
         const params = new URLSearchParams(window.location.search)
-        const code = params.get('code')
-        if (code) {
+        const authSuccess = params.get('auth')
+        
+        if (authSuccess === 'success') {
+            // Clean up URL
             const url = new URL(window.location.href)
-            url.searchParams.delete('code');
-            (window.history as any).replaceState({}, document.title, url.toString());
-
-            (async () => {
-                setIsLoading(true)
+            url.searchParams.delete('auth')
+            ;(window.history as any).replaceState({}, document.title, url.toString())
+            
+            // Fetch user from backend session
+            setIsLoading(true)
+            ;(async () => {
                 try {
-                    const resp = await fetch(api('/api/auth/discord'), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ code, redirect_uri: redirectUri })
-                    })
-                    if (resp.ok) {
-                        const data = await resp.json()
-                        setUser(data.user ?? null)
-                        try { localStorage.setItem(storageKey, JSON.stringify(data.user ?? null)) } catch (e) { }
-                    } else {
-                        console.warn('Token exchange failed', await resp.text())
+                    const res = await fetch(api('/api/me'), { credentials: 'include' })
+                    if (res.ok) {
+                        const data = await res.json()
+                        if (data.user) {
+                            setUser(data.user)
+                            localStorage.setItem(storageKey, JSON.stringify(data.user))
+                        }
                     }
                 } catch (err) {
-                    console.error('Error exchanging code', err)
+                    console.error('Error fetching user after auth', err)
                 } finally {
                     setIsLoading(false)
+                }
+            })()
+        } else {
+            // 3) Normal page load - reconcile with backend session
+            ;(async () => {
+                try {
+                    const res = await fetch(api('/api/me'), { credentials: 'include' })
+                    if (res.ok) {
+                        const data = await res.json()
+                        if (data.user) {
+                            setUser(data.user)
+                            localStorage.setItem(storageKey, JSON.stringify(data.user))
+                        }
+                    }
+                } catch (err) {
+                    // ignore - backend may not be available
                 }
             })()
         }
@@ -95,20 +102,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     function login() {
-        if (!clientId) {
-            alert('Discord client ID not set (VITE_DISCORD_CLIENT_ID)')
-            return
-        }
-        const params = new URLSearchParams({
-            client_id: clientId,
-            redirect_uri: redirectUri,
-            response_type: 'code',
-            scope: scope,
-            prompt: 'consent'
-        })
-        console.log(params.get("redirectUri"))
+        // Navigate to server-side login endpoint which will redirect to Discord
         setIsLoading(true)
-        window.location.href = `https://discord.com/api/oauth2/authorize?${params.toString()}`
+        window.location.href = api('/api/auth/login')
     }
 
     function logout() {

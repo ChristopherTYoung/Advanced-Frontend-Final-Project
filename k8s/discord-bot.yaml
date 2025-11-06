@@ -38,6 +38,8 @@ spec:
                   key: VITE_DISCORD_BOT_URL
             - name: FRONTEND_ORIGINS
               value: "https://discord-bot-controller.duckdns.org"
+            - name: DISCORD_REDIRECT_URI
+              value: "https://discord-bot-controller.duckdns.org/bot/api/auth/callback"
             - name: DISCORD_SESSION_SAMESITE
               value: "none"
             - name: DISCORD_SESSION_HTTPS_ONLY

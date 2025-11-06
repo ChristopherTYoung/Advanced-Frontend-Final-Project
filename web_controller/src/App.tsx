@@ -1,49 +1,95 @@
 import './App.css'
 import { useAuth } from './auth'
+import { useState } from 'react'
+import { HomeTab } from './components/HomeTab'
+import { SetupTab } from './components/SetupTab'
+import { TestTab } from './components/TestTab'
+import { MessagesTab } from './components/MessagesTab'
 
 function App() {
   const { user, isLoading, login, logout, getAvatarUrl } = useAuth()
+  const [activeTab, setActiveTab] = useState<'home' | 'setup' | 'test' | 'messages'>('home')
 
   function handleLogin() {
     login()
   }
 
-  const isCallback = user != null
+  const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || (window as any)?.ENV?.VITE_DISCORD_CLIENT_ID
+  const botInviteUrl = clientId 
+    ? `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`
+    : ''
 
-  if (isCallback) {
+  if (!user) {
     return (
-      <div className="welcome-page">
-        {isLoading ? (
-          <div className="spinner">Loading...</div>
-        ) : user ? (
-          <div className="avatar-card">
-            <button className="logout-btn" onClick={logout}>Logout</button>
-            <div className='avatar-container'>
-              <img className="avatar" src={getAvatarUrl()} alt={`${user.username} avatar`} />
-            </div>
-            <h1>Welcome, {user.username}</h1>
-          </div>
-        ) : (
-          <div className="avatar-card">
-            <h2>No user information available</h2>
-            <p>Please return to the app and click Login.</p>
-            <button onClick={handleLogin}>Login</button>
-          </div>
-        )}
+      <div>
+        <button className="login-btn" onClick={handleLogin} aria-label="Login with Discord">
+          Login
+        </button>
+
+        <main className="card">
+          <h1>Welcome</h1>
+          <p className="read-the-docs">Click the Login button to sign in with Discord.</p>
+        </main>
       </div>
     )
   }
 
   return (
     <div>
-      <button className="login-btn" onClick={handleLogin} aria-label="Login with Discord">
-        Login
-      </button>
+      <button className="logout-btn" onClick={logout}>Logout</button>
+      
+      <div className="tabs">
+        <button 
+          className={`tab ${activeTab === 'home' ? 'active' : ''}`}
+          onClick={() => setActiveTab('home')}
+        >
+          Home
+        </button>
+        <button 
+          className={`tab ${activeTab === 'setup' ? 'active' : ''}`}
+          onClick={() => setActiveTab('setup')}
+        >
+          Setup
+        </button>
+        <button 
+          className={`tab ${activeTab === 'test' ? 'active' : ''}`}
+          onClick={() => setActiveTab('test')}
+        >
+          Test
+        </button>
+        <button 
+          className={`tab ${activeTab === 'messages' ? 'active' : ''}`}
+          onClick={() => setActiveTab('messages')}
+        >
+          Messages
+        </button>
+      </div>
 
-      <main className="card">
-        <h1>Welcome</h1>
-        <p className="read-the-docs">Click the Login button to sign in with Discord.</p>
-      </main>
+      {isLoading ? (
+        <div className="spinner">Loading...</div>
+      ) : (
+        <>
+          {activeTab === 'home' && (
+            <HomeTab 
+              username={user.username}
+              email={user.email}
+              getAvatarUrl={getAvatarUrl}
+            />
+          )}
+
+          {activeTab === 'setup' && (
+            <SetupTab botInviteUrl={botInviteUrl} />
+          )}
+
+          {activeTab === 'test' && (
+            <TestTab user={user} />
+          )}
+
+          {activeTab === 'messages' && (
+            <MessagesTab />
+          )}
+        </>
+      )}
     </div>
   )
 }
