@@ -12,6 +12,7 @@ class BotService:
     def __init__(self):
         self.bot_token = os.environ.get("DISCORD_BOT_TOKEN") or os.environ.get("VITE_DISCORD_BOT_TOKEN")
         self.message_service = None  # Will be set by main.py
+        self.settings_service = None  # Will be set by main.py
 
         # Discord Bot Setup
         intents = discord.Intents.default()
@@ -84,6 +85,26 @@ class BotService:
             function=self._tool_get_message_history,
         )
 
+        llm_service.register_tool(
+            name="change_bot_nickname",
+            description="Change the bot's nickname in a specific Discord server (guild)",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "guild_id": {
+                        "type": "string",
+                        "description": "The ID of the guild/server where the nickname should be changed",
+                    },
+                    "nickname": {
+                        "type": "string",
+                        "description": "The new nickname for the bot (max 32 characters). Use null or empty string to reset to default username.",
+                    },
+                },
+                "required": ["guild_id"],
+            },
+            function=self._tool_change_bot_nickname,
+        )
+
     async def _tool_get_guilds(self) -> Dict[str, Any]:
         """Tool function: Get list of guilds."""
         try:
@@ -116,8 +137,47 @@ class BotService:
                 return {"success": False, "error": "Message service not available"}
 
             limit = min(limit, 50)  # Cap at 50
-            messages = self.message_service.get_history(limit=limit, message_type=message_type)
+            messages = await self.message_service.get_history(limit=limit, message_type=message_type)
             return {"success": True, "messages": messages, "count": len(messages)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    async def _tool_change_bot_nickname(self, guild_id: str, nickname: Optional[str] = None) -> Dict[str, Any]:
+        """Tool function: Change bot nickname in a guild."""
+        try:
+            guild = self.get_guild_by_id(int(guild_id))
+            if not guild:
+                return {"success": False, "error": f"Guild with ID {guild_id} not found"}
+
+            # Get the bot's member object in the guild
+            bot_member = guild.get_member(self.bot.user.id)
+            if not bot_member:
+                return {"success": False, "error": "Bot is not a member of this guild"}
+
+            # Check if bot has permission to change its own nickname
+            if not guild.me.guild_permissions.change_nickname:
+                return {
+                    "success": False, 
+                    "error": "Bot does not have permission to change its nickname in this guild"
+                }
+
+            # Change the nickname (empty string or None resets to default)
+            old_nickname = bot_member.nick or self.bot.user.name
+            await bot_member.edit(nick=nickname if nickname else None)
+            new_nickname = nickname if nickname else self.bot.user.name
+
+            return {
+                "success": True,
+                "message": f"Bot nickname changed in {guild.name}",
+                "old_nickname": old_nickname,
+                "new_nickname": new_nickname,
+                "guild_name": guild.name,
+                "guild_id": guild_id
+            }
+        except discord.Forbidden:
+            return {"success": False, "error": "Bot lacks permissions to change nickname"}
+        except discord.HTTPException as e:
+            return {"success": False, "error": f"Discord API error: {str(e)}"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
@@ -130,6 +190,16 @@ class BotService:
             print(f"Bot is in {len(self.bot.guilds)} guilds:")
             for guild in self.bot.guilds:
                 print(f"  - {guild.name} (ID: {guild.id})")
+
+        @self.bot.event
+        async def on_guild_join(guild: discord.Guild):
+            """Called when the bot joins a new guild."""
+            print(f"Bot joined guild: {guild.name} (ID: {guild.id})")
+
+        @self.bot.event
+        async def on_guild_remove(guild: discord.Guild):
+            """Called when the bot is removed from a guild."""
+            print(f"Bot removed from guild: {guild.name} (ID: {guild.id})")
 
         @self.bot.event
         async def on_error(event, *args, **kwargs):
@@ -153,40 +223,32 @@ class BotService:
 
             await self.bot.process_commands(message)
 
-    def _build_conversation_history(
+    async def _build_conversation_history(
         self, user_id: str = None, guild_id: str = None, channel_id: str = None, limit: int = 10
     ) -> List[Dict[str, str]]:
-        """Build conversation history in LLM format from message service.
-
-        Args:
-            user_id: Filter by user ID (for DMs)
-            guild_id: Filter by guild ID (for server messages)
-            channel_id: Filter by channel ID (for server messages)
-            limit: Maximum number of messages to include (default 10)
-
-        Returns:
-            List of messages in LLM format [{"role": "user/assistant", "content": "..."}]
-        """
         if not self.message_service:
             return []
 
         try:
-            # Get recent messages from history
-            messages = self.message_service.get_history(limit=limit * 2)  # Get more to filter
-
-            # Filter messages based on context
-            filtered_messages = []
-            for msg in messages:
-                # For DMs, match user_id
-                if user_id and msg.get("type") in ["dm", "sent"] and msg.get("user_id") == user_id:
-                    filtered_messages.append(msg)
-                # For server messages, match guild and channel
-                elif guild_id and channel_id and msg.get("guild_id") == guild_id and msg.get("channel_id") == channel_id:
-                    filtered_messages.append(msg)
+            if user_id and not guild_id:
+                messages = await self.message_service.get_history(
+                    limit=limit * 2, 
+                    guild_id="DM",
+                    channel_id=channel_id
+                )
+            elif guild_id and channel_id:
+                # Server messages - filter by guild and channel
+                messages = await self.message_service.get_history(
+                    limit=limit * 2,
+                    guild_id=guild_id,
+                    channel_id=channel_id
+                )
+            else:
+                messages = await self.message_service.get_history(limit=limit * 2)
 
             # Convert to LLM format (limit to most recent)
             conversation = []
-            for msg in filtered_messages[-limit:]:
+            for msg in messages[-limit:]:
                 msg_type = msg.get("type")
                 content = msg.get("content", "")
                 username = msg.get("username", "Unknown")
@@ -207,15 +269,31 @@ class BotService:
             return []
             
 
+    async def _get_personality(self, guild_id: Optional[str]) -> Optional[str]:
+        if not guild_id or guild_id == "DM" or not self.settings_service:
+            return None
+            
+        try:
+            settings = await self.settings_service.get_settings(guild_id)
+            if settings and settings.get("settings"):
+                return settings["settings"].get("personality")
+        except Exception as e:
+            print(f"ERROR fetching personality settings: {e}")
+            return None
+        
+        return None
+
     async def _handle_dm(self, message: discord.Message):
         print(f"DEBUG: DM detected! Message service connected: {self.message_service is not None}")
         
         if self.message_service:
-            self.message_service.add_to_history(
+            await self.message_service.add_to_history(
                 message_type="dm",
                 content=message.content,
                 user_id=str(message.author.id),
                 username=message.author.name,
+                guild_id="DM",
+                channel_id=str(message.channel.id),
                 message_id=str(message.id),
             )
             print(f"DEBUG: DM added to history from {message.author.name}: {message.content}")
@@ -224,16 +302,23 @@ class BotService:
         
         print(f"DM received from {message.author.name}: {message.content}")
 
-        # Build conversation history for context
-        conversation_history = self._build_conversation_history(user_id=str(message.author.id), limit=10)
+        # Build conversation history for context (pass channel_id for DM filtering)
+        conversation_history = await self._build_conversation_history(
+            user_id=str(message.author.id), 
+            channel_id=str(message.channel.id),
+            limit=10
+        )
         print(f"DEBUG: Built conversation history with {len(conversation_history)} messages for DM")
 
         print(f"DEBUG: Generating LLM response for DM from {message.author.name}")
+        
+        # DMs don't have guild-specific personality
         llm_response = await llm_service.generate_discord_response(
             user_message=message.content, 
             username=message.author.name, 
             is_dm=True,
-            conversation_history=conversation_history
+            conversation_history=conversation_history,
+            personality=None  # No personality for DMs
         )
 
         if llm_response:
@@ -242,11 +327,13 @@ class BotService:
             print(f"DEBUG: LLM response sent to {message.author.name}")
 
             if self.message_service:
-                self.message_service.add_to_history(
+                await self.message_service.add_to_history(
                     message_type="sent",
                     content=llm_response,
                     user_id=str(self.bot.user.id),
                     username=self.bot.user.name,
+                    guild_id="DM",
+                    channel_id=str(message.channel.id),
                 )
         else:
             print("ERROR: Failed to generate LLM response")
@@ -257,7 +344,7 @@ class BotService:
         
         if self.message_service:
             guild = message.guild
-            self.message_service.add_to_history(
+            await self.message_service.add_to_history(
                 message_type="received",
                 content=message.content,
                 user_id=str(message.author.id),
@@ -276,12 +363,18 @@ class BotService:
 
         # Build conversation history for context
         guild = message.guild
-        conversation_history = self._build_conversation_history(
+        conversation_history = await self._build_conversation_history(
             guild_id=str(guild.id) if guild else None,
             channel_id=str(message.channel.id),
             limit=10
         )
         print(f"DEBUG: Built conversation history with {len(conversation_history)} messages for server")
+
+        # Get personality settings for this guild
+        guild_id_str = str(guild.id) if guild else None
+        personality = await self._get_personality(guild_id_str)
+        if personality:
+            print(f"DEBUG: Using personality setting for guild {guild_id_str}: {personality[:50]}...")
 
         print(f"DEBUG: Generating LLM response for server message from {message.author.name}")
         
@@ -290,10 +383,11 @@ class BotService:
             username=message.author.name,
             is_dm=False,
             channel_name=message.channel.name,
-            guild_id=str(guild.id) if guild else None,
+            guild_id=guild_id_str,
             guild_name=guild.name if guild else None,
             conversation_history=conversation_history,
-            use_tools=True
+            use_tools=True,
+            personality=personality
         )
 
         if llm_response:
@@ -304,7 +398,7 @@ class BotService:
             # Track bot's response in history
             if self.message_service:
                 guild = message.guild
-                self.message_service.add_to_history(
+                await self.message_service.add_to_history(
                     message_type="sent",
                     content=llm_response,
                     user_id=str(self.bot.user.id),
@@ -389,7 +483,7 @@ class BotService:
         # Track in message history
         if self.message_service:
             guild = channel.guild
-            self.message_service.add_to_history(
+            await self.message_service.add_to_history(
                 message_type="sent",
                 content=message,
                 user_id=user_id,

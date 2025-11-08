@@ -5,10 +5,11 @@ import { HomeTab } from './components/HomeTab'
 import { SetupTab } from './components/SetupTab'
 import { TestTab } from './components/TestTab'
 import { MessagesTab } from './components/MessagesTab'
+import SettingsTab from './components/SettingsTab'
 
 function App() {
   const { user, isLoading, login, logout, getAvatarUrl } = useAuth()
-  const [activeTab, setActiveTab] = useState<'home' | 'setup' | 'test' | 'messages'>('home')
+  const [activeTab, setActiveTab] = useState<'home' | 'setup' | 'test' | 'messages' | 'settings'>('home')
 
   function handleLogin() {
     login()
@@ -63,6 +64,12 @@ function App() {
         >
           Messages
         </button>
+        <button 
+          className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          Settings
+        </button>
       </div>
 
       {isLoading ? (
@@ -87,6 +94,10 @@ function App() {
 
           {activeTab === 'messages' && (
             <MessagesTab />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsTab />
           )}
         </>
       )}

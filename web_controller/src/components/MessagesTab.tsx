@@ -1,7 +1,7 @@
 import { useMessages } from '../hooks/useApi'
 
 export function MessagesTab() {
-  const { data: messages = [], isLoading: loadingMessages, refetch: refetchMessages } = useMessages('received', true)
+  const { data: messages = [], isLoading: loadingMessages, refetch: refetchMessages } = useMessages(undefined, true)
 
   return (
     <div className="messages-page">
@@ -27,17 +27,24 @@ export function MessagesTab() {
             </div>
           ) : (
             messages.map((msg) => (
-              <div key={msg.id} className="message-item">
+              <div key={msg.id} className={`message-item ${msg.type === 'sent' ? 'bot-message' : 'user-message'}`}>
                 <div className="message-header">
-                  <span className="message-user">{msg.username}</span>
+                  <span className="message-user">
+                    {msg.type === 'sent' ? '🤖 Bot' : msg.user_id || 'Unknown User'}
+                  </span>
                   <span className="message-time">
                     {new Date(msg.timestamp).toLocaleString()}
                   </span>
                 </div>
                 <div className="message-content">{msg.content}</div>
-                {msg.guild_name && (
+                {msg.guild_id && msg.guild_id !== 'DM' && (
                   <div className="message-meta">
-                    Server: {msg.guild_name} • Channel: #{msg.channel_name}
+                    Guild: {msg.guild_id} • Channel: {msg.channel_id}
+                  </div>
+                )}
+                {msg.guild_id === 'DM' && (
+                  <div className="message-meta">
+                    Direct Message
                   </div>
                 )}
               </div>

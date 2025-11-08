@@ -1,19 +1,33 @@
 """Message Service - Manages Discord bot messages and history."""
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 import discord
 from discord.ext import commands
+import asyncpg
 
 
 class MessageService:
-    """Service for managing bot messages and message history."""
-
+    """Service for managing bot messages and message history with database persistence."""
     def __init__(self):
-        self.message_history: List[Dict[str, Any]] = []
-        self.max_history = 100  # Keep last 100 messages
+        self.db_pool: Optional[asyncpg.Pool] = None
 
-    def add_to_history(
+    async def init_db_pool(self, database_url: str):
+        try:
+            self.db_pool = await asyncpg.create_pool(database_url, min_size=2, max_size=10)
+            print("DEBUG MessageService: Database pool initialized")
+        except Exception as e:
+            print(f"ERROR MessageService: Failed to initialize database pool: {e}")
+            import traceback
+            traceback.print_exc()
+
+    async def close_db_pool(self):
+        """Close database connection pool."""
+        if self.db_pool:
+            await self.db_pool.close()
+            print("DEBUG MessageService: Database pool closed")
+
+    async def add_to_history(
         self,
         message_type: str,
         content: str,
@@ -25,67 +39,107 @@ class MessageService:
         channel_name: str = None,
         message_id: str = None,
     ):
-        message_entry = {
-            "id": message_id or str(datetime.utcnow().timestamp()),
-            "type": message_type,
-            "content": content,
-            "timestamp": datetime.utcnow().isoformat(),
-            "user_id": user_id,
-            "username": username,
-            "guild_id": guild_id,
-            "guild_name": guild_name,
-            "channel_id": channel_id,
-            "channel_name": channel_name,
-        }
+        if not self.db_pool:
+            print("WARNING MessageService: Database pool not initialized, skipping message storage")
+            return
 
-        self.message_history.append(message_entry)
-        print(f"DEBUG MessageService: Added {message_type} message. Total history: {len(self.message_history)}")
+        try:
+            # Map message_type to role for database
+            role_mapping = {"dm": "user", "received": "user", "sent": "assistant"}
+            role = role_mapping.get(message_type, "user")
 
-        # Keep only the most recent messages
-        if len(self.message_history) > self.max_history:
-            self.message_history = self.message_history[-self.max_history :]
-
-    def get_history(self, limit: int = 50, message_type: str = None, user_id: str = None) -> List[Dict[str, Any]]:
-        messages = self.message_history
-
-        # Apply filters
-        if message_type:
-            messages = [m for m in messages if m["type"] == message_type]
-
-        if user_id:
-            messages = [m for m in messages if m["user_id"] == user_id]
-
-        # Return most recent first, limited
-        return list(reversed(messages[-limit:]))
-
-    def get_dm_messages(self, limit: int = 50) -> List[Dict[str, Any]]:
-        return self.get_history(limit=limit, message_type="dm")
-
-    def clear_history(self):
-        """Clear all message history."""
-        self.message_history = []
-
-    def register_bot_handlers(self, bot: commands.Bot):
-        @bot.event
-        async def on_message(message: discord.Message):
-            # Ignore messages from the bot itself
-            if message.author == bot.user:
-                return
-
-            # Handle direct messages
-            if isinstance(message.channel, discord.DMChannel):
-                self.add_to_history(
-                    message_type="dm",
-                    content=message.content,
-                    user_id=str(message.author.id),
-                    username=message.author.name,
-                    message_id=str(message.id),
+            async with self.db_pool.acquire() as conn:
+                # Insert message into database with channel_id and user_id
+                await conn.execute(
+                    """
+                    INSERT INTO message (guild_id, channel_id, user_id, role, body, created_at)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    """,
+                    guild_id or "DM",  # Use 'DM' as guild_id for direct messages
+                    channel_id or "DM",  # Use 'DM' as channel_id for direct messages
+                    user_id or "Unknown",
+                    role,
+                    content,
+                    datetime.utcnow(),
                 )
-                print(f"DM received from {message.author.name}: {message.content}")
+                print(f"DEBUG MessageService: Added {message_type} message to database from user {user_id}")
+        except Exception as e:
+            print(f"ERROR MessageService: Failed to add message to database: {e}")
+            import traceback
+            traceback.print_exc()
 
-            # Allow other command processing
-            await bot.process_commands(message)
+    async def get_history(
+        self, limit: int = 50, message_type: str = None, user_id: str = None, guild_id: str = None, channel_id: str = None
+    ) -> List[Dict[str, Any]]:
+        if not self.db_pool:
+            print("WARNING MessageService: Database pool not initialized")
+            return []
 
+        try:
+            async with self.db_pool.acquire() as conn:
+                # Build query with filters
+                query = "SELECT message_id, guild_id, channel_id, user_id, role, body, created_at FROM message WHERE 1=1"
+                params = []
+                param_count = 1
 
+                # Filter by guild_id
+                if guild_id:
+                    query += f" AND guild_id = ${param_count}"
+                    params.append(guild_id)
+                    param_count += 1
+
+                # Filter by channel_id
+                if channel_id:
+                    query += f" AND channel_id = ${param_count}"
+                    params.append(channel_id)
+                    param_count += 1
+
+                # Filter by user_id
+                if user_id:
+                    query += f" AND user_id = ${param_count}"
+                    params.append(user_id)
+                    param_count += 1
+
+                # Filter by message_type (map to role)
+                if message_type:
+                    role_mapping = {"dm": "user", "received": "user", "sent": "assistant"}
+                    role = role_mapping.get(message_type, "user")
+                    query += f" AND role = ${param_count}"
+                    params.append(role)
+                    param_count += 1
+
+                # Order by most recent and limit
+                query += f" ORDER BY created_at DESC LIMIT ${param_count}"
+                params.append(limit)
+
+                rows = await conn.fetch(query, *params)
+
+                # Convert to dictionary format
+                messages = []
+                for row in reversed(rows):  # Reverse to get oldest first
+                    messages.append(
+                        {
+                            "id": str(row["message_id"]),
+                            "type": "sent" if row["role"] == "assistant" else "received",
+                            "content": row["body"],
+                            "timestamp": row["created_at"].isoformat(),
+                            "user_id": row["user_id"] if row["user_id"] != "Unknown" else None,
+                            "username": None,  # Not stored in current schema
+                            "guild_id": row["guild_id"] if row["guild_id"] != "DM" else None,
+                            "guild_name": None,  # Not stored in current schema
+                            "channel_id": row["channel_id"] if row["channel_id"] != "DM" else None,
+                            "channel_name": None,  # Not stored in current schema
+                        }
+                    )
+                return messages
+        except Exception as e:
+            print(f"ERROR MessageService: Failed to get history from database: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    async def get_dm_messages(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get direct messages from database."""
+        return await self.get_history(limit=limit, guild_id="DM")
 # Singleton instance
 message_service = MessageService()

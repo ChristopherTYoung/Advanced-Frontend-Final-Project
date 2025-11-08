@@ -393,6 +393,24 @@
   border-left: 4px solid #5865f2;
 }
 
+.message-item.bot-message {
+  background: rgba(87, 242, 135, 0.1);
+  border-left: 4px solid #57f287;
+}
+
+.message-item.bot-message .message-user {
+  color: #57f287;
+}
+
+.message-item.user-message {
+  background: rgba(88, 101, 242, 0.1);
+  border-left: 4px solid #5865f2;
+}
+
+.message-item.user-message .message-user {
+  color: #5865f2;
+}
+
 .message-header {
   display: flex;
   justify-content: space-between;
@@ -438,4 +456,121 @@
   text-align: center;
   padding: 2rem;
   color: #999;
+}
+
+.settings-tab {
+  display: flex;
+  flex-direction: column;
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: #597377;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  padding: 2rem;
+  color: #fff;
+}
+
+.settings-tab h2 {
+  margin-top: 0;
+  color: #fff;
+}
+
+.settings-tab .form-group {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.settings-tab .form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #ccc;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.settings-tab .form-group small {
+  display: block;
+  margin-top: 0.5rem;
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.settings-tab select,
+.settings-tab input,
+.settings-tab textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 2px solid #2a2a2a;
+  background-color: #2a2a2a;
+  color: #fff;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.settings-tab select:focus,
+.settings-tab input:focus,
+.settings-tab textarea:focus {
+  outline: none;
+  border-color: #5865f2;
+  box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.2);
+}
+
+.settings-tab select:disabled,
+.settings-tab input:disabled,
+.settings-tab textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-tab textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.save-button {
+  background: linear-gradient(180deg, #5865f2, #4752c4);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+  transition: all 0.2s ease;
+  margin-top: 1rem;
+}
+
+.save-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(88, 101, 242, 0.4);
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.success-message {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background-color: rgba(87, 242, 135, 0.2);
+  color: #57f287;
+  border: 1px solid #57f287;
+  font-weight: 500;
+}
+
+.error-message {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background-color: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+  border: 1px solid #ff6b6b;
+  font-weight: 500;
 }

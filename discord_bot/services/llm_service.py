@@ -155,14 +155,20 @@ class LLMService:
         guild_id: str = None,
         guild_name: str = None,
         conversation_history: Optional[List[Dict[str, str]]] = None,
-        use_tools: bool = True
+        use_tools: bool = True,
+        personality: Optional[str] = None
     ) -> Optional[str]:
+        # Build personality instruction if provided
+        personality_instruction = ""
+        if personality:
+            personality_instruction = f"\n\nIMPORTANT PERSONALITY: {personality}\nYou MUST respond according to this personality in all your messages."
+        
         if is_dm:
             system_prompt = (
                 "You are a helpful Discord bot assistant. You're having a direct message conversation "
                 f"with {username}. Be friendly, helpful, and conversational. Keep responses concise "
                 "and appropriate for Discord chat. You have access to tools to get information about "
-                "Discord servers and channels."
+                f"Discord servers and channels.{personality_instruction}"
             )
         else:
             # Build context about the current server
@@ -177,7 +183,8 @@ class LLMService:
                 "You have access to tools:\n"
                 "- get_guilds: Get list of all servers the bot is in\n"
                 f"- get_channels: Get channels in a specific server (use guild_id: '{guild_id}' for this server)\n"
-                "- get_message_history: Get recent message history"
+                f"- get_message_history: Get recent message history"
+                f"{personality_instruction}"
             )
 
         return await self.generate_response(

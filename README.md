@@ -97,8 +97,18 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 
 #### Delivered
 ##### Rubric Items:
+- ✅ Zod validation (frontend + backend)
+- ✅ DB Setup (PostgreSQL with asyncpg)
+- ✅ Tool calling (change_bot_nickname, send messages, etc)
 
 ##### Features
+- ✅ Send and receive messages from Ollama/LLM
+- ✅ Store bot messages and user messages in database
+- ✅ Store AI Chat Settings (personality, nickname) in database
+- ✅ AI Chat Customizations Tab (Settings page)
+- ✅ Display all messages (bot + user) in Messages tab
+- ✅ Visual differentiation for bot vs user messages
+- ✅ Automatic nickname change with LLM announcement
 
 ### Nov 12
 #### Estimates
