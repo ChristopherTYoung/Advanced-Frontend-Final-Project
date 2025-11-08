@@ -37,12 +37,12 @@ export const MessageSchema = z.object({
   type: z.string(),
   content: z.string(),
   timestamp: z.string(),
-  user_id: z.string(),
-  username: z.string(),
-  guild_id: z.string().optional(),
-  guild_name: z.string().optional(),
-  channel_id: z.string().optional(),
-  channel_name: z.string().optional(),
+  user_id: z.string().nullable(),
+  username: z.string().nullable(),
+  guild_id: z.string().optional().nullable(),
+  guild_name: z.string().optional().nullable(),
+  channel_id: z.string().optional().nullable(),
+  channel_name: z.string().optional().nullable(),
 })
 
 export type Message = z.infer<typeof MessageSchema>
