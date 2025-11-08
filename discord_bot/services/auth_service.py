@@ -1,5 +1,3 @@
-"""Authentication Service - Manages Discord OAuth and sessions."""
-
 import os
 from typing import Optional, Dict, Any
 from urllib.parse import urlencode
@@ -108,7 +106,6 @@ class AuthService:
             return f"{self.frontend_origin}/?auth=success"
         else:
             return f"{self.frontend_origin}/?auth=error"
-
 
 # Singleton instance
 auth_service = AuthService()
