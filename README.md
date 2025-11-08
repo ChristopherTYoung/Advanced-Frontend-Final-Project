@@ -85,13 +85,14 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ### Nov 8
 #### Estimates
 ##### Rubric Items:
-- Zod
+- Zod?
 - DB Setup
+- Tool calling (1 of 4)
 
 ##### Features:
-- Settings page
-- Account tab
-- Notification preferences tab
+- Send and receive messages from Ollama
+- Store bot messages and messages sent to the bot in the database?
+- Store AI Chat Settings in the database
 - AI Chat Customizations Tab
 
 #### Delivered
@@ -106,6 +107,9 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 - Toasts
 
 ##### Features:
+- Settings page
+- Account tab
+- Notification preferences tab
 - Get message history
 - Message Management view
 
