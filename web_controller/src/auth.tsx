@@ -92,13 +92,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     function login() {
-        // Navigate to server-side login endpoint which will redirect to Discord
         window.location.href = api('/api/auth/login')
     }
 
     function logout() {
         localStorage.removeItem(storageKey)
-        // Invalidate the auth query to clear user data
         queryClient.setQueryData(['auth', 'me'], null)
         ;(async () => {
             await fetch(api('/api/logout'), { method: 'POST', credentials: 'include' })
