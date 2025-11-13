@@ -34,15 +34,17 @@ class ChannelInfo(BaseModel):
 
 # Message schemas
 class SendMessageRequest(BaseModel):
-    """Request to send a message to a Discord channel."""
     guild_id: str = Field(..., description="Guild ID where the message will be sent")
     channel_id: str = Field(..., description="Channel ID where the message will be sent")
-    message: str = Field(..., min_length=1, max_length=2000, description="Message content")
+    message: Optional[str] = Field(None, min_length=1, max_length=2000, description="Raw message content")
+    instructions: Optional[str] = Field(None, description="Optional instructions for the LLM to generate the message")
+    event_details: Optional[str] = Field(None, description="Optional event details to include when generating the message")
 
     @field_validator('message')
     @classmethod
-    def validate_message(cls, v: str) -> str:
-        """Validate message is not empty after stripping whitespace."""
+    def validate_message(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
         if not v.strip():
             raise ValueError("Message cannot be empty or only whitespace")
         return v

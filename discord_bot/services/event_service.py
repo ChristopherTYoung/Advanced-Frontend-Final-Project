@@ -76,6 +76,49 @@ class EventService:
             import traceback; traceback.print_exc()
             return []
 
+    async def get_due_events(self, up_to: datetime) -> List[Dict[str, Any]]:
+        if not self.db_pool:
+            print("WARNING EventService: Database pool not initialized")
+            return []
+
+        if up_to.tzinfo is not None:
+            up_to = up_to.astimezone(timezone.utc).replace(tzinfo=None)
+
+        try:
+            async with self.db_pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT event_id, user_id, guild_id, time_of_event, event_name, event_details FROM event WHERE time_of_event <= $1 ORDER BY time_of_event ASC",
+                    up_to,
+                )
+                events = []
+                for row in rows:
+                    events.append({
+                        "event_id": int(row["event_id"]),
+                        "user_id": row["user_id"],
+                        "guild_id": row["guild_id"],
+                        "time_of_event": row["time_of_event"].isoformat(),
+                        "event_name": row["event_name"],
+                        "event_details": row["event_details"],
+                    })
+                return events
+        except Exception as e:
+            print(f"ERROR EventService: Failed to get due events: {e}")
+            import traceback; traceback.print_exc()
+            return []
+
+    async def delete_event(self, event_id: int) -> bool:
+        if not self.db_pool:
+            print("WARNING EventService: Database pool not initialized")
+            return False
+        try:
+            async with self.db_pool.acquire() as conn:
+                await conn.execute("DELETE FROM event WHERE event_id = $1", event_id)
+                return True
+        except Exception as e:
+            print(f"ERROR EventService: Failed to delete event {event_id}: {e}")
+            import traceback; traceback.print_exc()
+            return False
+
 
 # Singleton instance
 event_service = EventService()

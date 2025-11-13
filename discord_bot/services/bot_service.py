@@ -105,6 +105,21 @@ class BotService:
             function=self._tool_change_bot_nickname,
         )
 
+        llm_service.register_tool(
+            name="send_message",
+            description="Send a message to a specific channel in a guild",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "guild_id": {"type": "string", "description": "Guild ID where to send the message"},
+                    "channel_id": {"type": "string", "description": "Channel ID where to send the message"},
+                    "message": {"type": "string", "description": "Message content to send"},
+                },
+                "required": ["guild_id", "channel_id", "message"],
+            },
+            function=self._tool_send_message,
+        )
+
     async def _tool_get_guilds(self) -> Dict[str, Any]:
         """Tool function: Get list of guilds."""
         try:
@@ -178,6 +193,38 @@ class BotService:
             return {"success": False, "error": "Bot lacks permissions to change nickname"}
         except discord.HTTPException as e:
             return {"success": False, "error": f"Discord API error: {str(e)}"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+
+    async def _tool_send_message(self, guild_id: str, channel_id: str, message: str) -> Dict[str, Any]:
+        try:
+            if not self.is_ready():
+                return {"success": False, "error": "Bot is not ready"}
+
+            guild = self.get_guild_by_id(int(guild_id))
+            if not guild:
+                return {"success": False, "error": "Guild not found"}
+
+            channel = None
+            for ch in guild.text_channels:
+                if str(ch.id) == str(channel_id):
+                    channel = ch
+                    break
+
+            if not channel:
+                # Try to fetch by id globally
+                ch_obj = self.get_channel_by_id(int(channel_id))
+                if ch_obj and isinstance(ch_obj, discord.TextChannel):
+                    channel = ch_obj
+
+            if not channel:
+                return {"success": False, "error": "Channel not found or not a text channel"}
+
+            await self.send_message(int(channel.id), message)
+            return {"success": True, "message": "Message sent"}
+        except discord.Forbidden:
+            return {"success": False, "error": "Bot lacks permissions to send message in that channel"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 

@@ -1,5 +1,7 @@
 import os
+import asyncio
 from typing import Optional
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -54,6 +56,89 @@ async def startup_event():
     await event_service.init_db_pool(DATABASE_URL)
     print(f"DEBUG: Bot service has message_service: {bot_service.message_service is not None}")
     await bot_service.start()
+    # Start background event checker
+    async def _event_checker_loop():
+        print("DEBUG: Event checker background task started")
+        while True:
+            try:
+                # Use UTC naive datetimes (DB stores TIMESTAMP without tz)
+                now = datetime.utcnow()
+                due_events = await event_service.get_due_events(now)
+                if due_events:
+                    print(f"DEBUG: Found {len(due_events)} due event(s)")
+
+                for ev in due_events:
+                    try:
+                        guild_obj = bot_service.get_guild_by_id(int(ev['guild_id']))
+                        if not guild_obj:
+                            print(f"WARNING: Guild {ev['guild_id']} not found by bot")
+                            continue
+
+                        target_channel_id = None
+                        for channel in guild_obj.text_channels:
+                            if channel.permissions_for(guild_obj.me).send_messages:
+                                target_channel_id = str(channel.id)
+                                break
+
+                        if not target_channel_id:
+                            print(f"WARNING: No suitable channel to send notification in guild {ev['guild_id']}")
+                            continue
+
+                        try:
+                            personality = await bot_service._get_personality(ev['guild_id'])
+                        except Exception:
+                            personality = None
+
+                        personality_text = f"IMPORTANT PERSONALITY: {personality}.\n" if personality else ""
+
+                        system_prompt = (
+                            "You are an assistant that can call tools to interact with Discord. "
+                            "You may either: 1) call the `send_message` tool with arguments {guild_id, channel_id, message} to send a message, OR 2) return plain text in your assistant response which will be sent as-is to the channel. "
+                            "Prefer concise, friendly announcements suitable for @everyone pings.\n"
+                            + personality_text
+                        )
+
+                        user_prompt = (
+                            f"Create an @everyone announcement for the event '{ev['event_name']}' happening now. "
+                            f"Event time: {ev['time_of_event']}. Details: {ev['event_details']}. "
+                            f"Target guild_id: '{ev['guild_id']}', channel_id: '{target_channel_id}'."
+                        )
+
+                        resp = await llm_service.generate_response(
+                            user_message=user_prompt,
+                            system_prompt=system_prompt,
+                            use_tools=True,
+                        )
+
+                        if resp:
+                            try:
+                                await bot_service._tool_send_message(ev['guild_id'], target_channel_id, resp)
+                                print(f"DEBUG: Sent free-form LLM announcement for event {ev['event_id']}")
+                            except Exception as e:
+                                print(f"ERROR sending free-form LLM announcement for event {ev['event_id']}: {e}")
+                                import traceback; traceback.print_exc()
+                        else:
+                            print(f"DEBUG: LLM executed tool calls or returned no plain text for event {ev['event_id']}")
+                    except Exception as e:
+                        print(f"ERROR preparing/sending announcement for event {ev.get('event_id')}: {e}")
+                        import traceback; traceback.print_exc()
+                    finally:
+                        try:
+                            deleted = await event_service.delete_event(ev['event_id'])
+                            if deleted:
+                                print(f"DEBUG: Deleted event {ev['event_id']} after processing")
+                        except Exception as e:
+                            print(f"ERROR deleting event {ev.get('event_id')}: {e}")
+
+            except Exception as e:
+                print(f"ERROR in event checker loop: {e}")
+                import traceback; traceback.print_exc()
+
+            # Wait 60 seconds between checks
+            await asyncio.sleep(60)
+
+    # Schedule the background checker task
+    app.state.event_checker_task = asyncio.create_task(_event_checker_loop())
 
 
 @app.on_event("shutdown")
@@ -62,6 +147,10 @@ async def shutdown_event():
     await message_service.close_db_pool()
     await settings_service.close_db_pool()
     await event_service.close_db_pool()
+    # Cancel background event checker if running
+    task = getattr(app.state, 'event_checker_task', None)
+    if task and not task.done():
+        task.cancel()
 
 
 app.add_middleware(
@@ -181,19 +270,87 @@ async def api_send_message(payload: SendMessageRequest, request: Request):
         raise HTTPException(status_code=503, detail="Bot is not ready")
 
     try:
-        await bot_service.send_message(
-            int(payload.channel_id), payload.message, user_id=user.get("id"), username=user.get("username")
+        result = await _send_message_internal(
+            guild_id=payload.guild_id,
+            channel_id=payload.channel_id,
+            message=payload.message,
+            instructions=payload.instructions,
+            event_details=payload.event_details,
+            user=user,
         )
-        return JSONResponse({"ok": True, "message": "Message sent successfully"})
-
+        if result:
+            return JSONResponse({"ok": True, "message": "Message sent successfully"})
+        else:
+            raise HTTPException(status_code=500, detail="Failed to send message")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except discord.Forbidden:
         raise HTTPException(status_code=403, detail="Bot does not have permission to send messages in this channel")
     except discord.HTTPException as e:
         raise HTTPException(status_code=500, detail=f"Discord API error: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error sending message: {str(e)}")
+
+
+async def _send_message_internal(guild_id: str, channel_id: str, message: Optional[str] = None, instructions: Optional[str] = None, event_details: Optional[str] = None, user: Optional[dict] = None) -> bool:
+    """Internal helper to send a message to a channel. If `instructions` is provided,
+    use the LLM to generate the final message (optionally including `event_details`).
+    Returns True on success.
+    """
+    if not bot_service.is_ready():
+        raise ValueError("Bot is not ready")
+
+    # If instructions provided, generate content using LLM
+    final_message = message
+    if not final_message and not instructions:
+        raise ValueError("Either message or instructions must be provided")
+
+    if instructions:
+        prompt = instructions
+        if event_details:
+            prompt = f"{instructions}\n\nEvent details: {event_details}"
+
+        announcement = await llm_service.generate_response(
+            user_message=prompt,
+            system_prompt="You are a Discord announcement generator. Produce a concise, friendly announcement suitable for @everyone pings.",
+            use_tools=False,
+        )
+
+        final_message = announcement or final_message
+
+    if not final_message:
+        raise ValueError("No message content to send")
+
+    # Send via bot_service
+    return await bot_service.send_message(int(channel_id), final_message, user_id=(user.get("id") if user else None), username=(user.get("username") if user else None))
+
+
+@app.post("/api/guilds/{guild_id}/channels/{channel_id}/messages")
+async def api_send_message_to_channel(guild_id: str, channel_id: str, payload: SendMessageRequest, request: Request):
+    """New route used by the frontend. Accepts optional `instructions` and `event_details`.
+    Delegates to the internal send helper.
+    """
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        ok = await _send_message_internal(
+            guild_id=guild_id,
+            channel_id=channel_id,
+            message=payload.message,
+            instructions=payload.instructions,
+            event_details=payload.event_details,
+            user=user,
+        )
+        if ok:
+            return JSONResponse({"ok": True, "message": "Message sent successfully"})
+        else:
+            raise HTTPException(status_code=500, detail="Failed to send message")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/messages")
