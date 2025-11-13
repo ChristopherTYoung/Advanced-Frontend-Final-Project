@@ -8,26 +8,26 @@ import {
   GuildSettingsSchema,
   SendMessageRequestSchema,
   UpdateGuildSettingsRequestSchema,
+  EventSchema,
+  EventCreateRequestSchema,
   type User,
   type Guild,
   type Channel,
   type Message,
   type GuildSettings,
+  type Event,
+  type EventCreateRequest,
 } from '../schemas'
 
 const API_BASE_URL = import.meta.env.VITE_DISCORD_BOT_URL || window.ENV?.VITE_DISCORD_BOT_URL
 
 function api(path: string): string {
-  // In development with Vite dev server, use relative URLs so the proxy works
-  // In production, use the full bot URL from env
   const isDev = import.meta.env.DEV
   
   if (isDev) {
-    // Use relative URL - Vite proxy will forward to backend
     console.log('API Request (dev, proxied):', path)
     return path
   } else {
-    // Use full URL in production
     const baseUrl = API_BASE_URL?.replace(/\/$/, '') || ''
     const fullUrl = `${baseUrl}${path}`
     console.log('API Request (prod):', fullUrl)
@@ -35,7 +35,6 @@ function api(path: string): string {
   }
 }
 
-// API Functions
 async function fetchUser(): Promise<User> {
   const response = await fetch(api('/api/user'), {
     credentials: 'include',
@@ -55,7 +54,6 @@ async function fetchGuilds(): Promise<Guild[]> {
     throw new Error('Failed to fetch guilds')
   }
   const data = await response.json()
-  // Backend returns { guilds: [...] }, so extract the guilds array
   const guildsArray = data.guilds || []
   return z.array(GuildSchema).parse(guildsArray)
 }
@@ -68,7 +66,6 @@ async function fetchChannels(guildId: string): Promise<Channel[]> {
     throw new Error('Failed to fetch channels')
   }
   const data = await response.json()
-  // Backend returns { channels: [...] }, so extract the channels array
   const channelsArray = data.channels || []
   return z.array(ChannelSchema).parse(channelsArray)
 }
@@ -85,6 +82,34 @@ async function fetchMessages(messageType?: string): Promise<Message[]> {
   // Backend returns { messages: [...] }, so extract the messages array
   const messagesArray = data.messages || []
   return z.array(MessageSchema).parse(messagesArray)
+}
+
+async function fetchEvents(guildId: string): Promise<Event[]> {
+  const response = await fetch(api(`/api/guilds/${guildId}/events`), {
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch events')
+  }
+  const data = await response.json()
+  const eventsArray = data.events || []
+  return z.array(EventSchema).parse(eventsArray)
+}
+
+async function createEvent(params: { guildId: string; payload: EventCreateRequest }) {
+  const validated = EventCreateRequestSchema.parse(params.payload)
+
+  const response = await fetch(api(`/api/guilds/${params.guildId}/events`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(validated),
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to create event')
+  }
+  return data
 }
 
 async function sendMessage(params: { guildId: string; channelId: string; message: string }) {
@@ -168,6 +193,26 @@ export function useMessages(messageType?: string, enabled: boolean = true) {
   })
 }
 
+export function useEvents(guildId: string | null, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['events', guildId],
+    queryFn: () => fetchEvents(guildId!),
+    enabled: enabled && !!guildId,
+  })
+}
+
+export function useCreateEvent() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ guildId, payload }: { guildId: string; payload: EventCreateRequest }) =>
+      createEvent({ guildId, payload }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['events', variables.guildId] })
+    },
+  })
+}
+
 export function useSendMessage() {
   const queryClient = useQueryClient()
   
@@ -201,5 +246,4 @@ export function useUpdateGuildSettings() {
   })
 }
 
-// Export api helper for other uses
 export { api }

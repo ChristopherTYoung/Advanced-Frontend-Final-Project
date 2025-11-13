@@ -1,4 +1,5 @@
 DROP TABLE IF EXISTS message CASCADE;
+DROP TABLE IF EXISTS event CASCADE;
 DROP TABLE IF EXISTS guild_bot_settings CASCADE;
 
 -- Create Guild Bot Settings table
@@ -24,3 +25,16 @@ CREATE INDEX idx_message_guild_id ON message(guild_id);
 CREATE INDEX idx_message_channel_id ON message(channel_id);
 CREATE INDEX idx_guild_bot_settings_guild_id ON guild_bot_settings(guild_id);
 CREATE INDEX idx_message_role ON message(role);
+
+-- Create Event table
+CREATE TABLE event (
+    event_id SERIAL PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL,
+    guild_id VARCHAR(100) NOT NULL,
+    time_of_event TIMESTAMP NOT NULL,
+    event_name VARCHAR(50) NOT NULL,
+    event_details VARCHAR(200) NOT NULL
+);
+
+CREATE INDEX idx_event_guild_id ON event(guild_id);
+CREATE INDEX idx_event_user_id ON event(user_id);

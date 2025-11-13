@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import { useGuilds, useGuildSettings, useUpdateGuildSettings } from '../hooks/useApi'
 
 export default function SettingsTab() {
@@ -40,8 +41,7 @@ export default function SettingsTab() {
           personality: personality || undefined,
         },
       })
-      setSuccessMessage('Settings saved successfully!')
-      setTimeout(() => setSuccessMessage(''), 3000)
+      toast.success('Settings saved successfully!')
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to save settings')
     }

@@ -1,5 +1,3 @@
-"""Main FastAPI application."""
-
 import os
 from typing import Optional
 
@@ -14,6 +12,7 @@ from services.auth_service import auth_service
 from services.message_service import message_service
 from services.settings_service import settings_service
 from services.llm_service import llm_service
+from services.event_service import event_service
 from schemas import (
     SendMessageRequest,
     UpdateSettingsRequest,
@@ -30,43 +29,41 @@ from schemas import (
     GuildInfo,
     ChannelInfo,
     MessageInfo,
+    EventCreateRequest,
+    EventsResponse,
 )
 
 app = FastAPI()
 
-# Configuration
 SESSION_SECRET = os.environ.get("DISCORD_SESSION_SECRET", "dev-secret-change-me")
 FRONTEND_ORIGINS = os.environ.get("FRONTEND_ORIGINS", "http://localhost:5173")
 DISCORD_SESSION_SAMESITE = os.environ.get("DISCORD_SESSION_SAMESITE", "lax")
 DISCORD_SESSION_HTTPS_ONLY = os.environ.get("DISCORD_SESSION_HTTPS_ONLY", "false").lower() in ("1", "true", "yes")
 DATABASE_URL = os.environ.get("DB_CONNECTION_STRING")
 
-# Connect services
 bot_service.message_service = message_service
 bot_service.settings_service = settings_service
 print(f"DEBUG: Services connected")
 
 
-# Lifecycle Events
 @app.on_event("startup")
 async def startup_event():
-    """Start the Discord bot and initialize database on application startup."""
     print(f"DEBUG: Initializing database pool...")
     await message_service.init_db_pool(DATABASE_URL)
     await settings_service.init_db_pool(DATABASE_URL)
+    await event_service.init_db_pool(DATABASE_URL)
     print(f"DEBUG: Bot service has message_service: {bot_service.message_service is not None}")
     await bot_service.start()
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Stop the Discord bot and close database on application shutdown."""
     await bot_service.stop()
     await message_service.close_db_pool()
     await settings_service.close_db_pool()
+    await event_service.close_db_pool()
 
 
-# Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in FRONTEND_ORIGINS.split(",") if o.strip()],
@@ -82,21 +79,16 @@ app.add_middleware(
     https_only=DISCORD_SESSION_HTTPS_ONLY,
 )
 
-
-# Routes
 @app.get("/")
 async def read_root():
     """Health check endpoint."""
     return {"hello": "world"}
 
-
-# Authentication Routes
 @app.get("/api/auth/login")
 async def auth_login():
     """Redirect to Discord OAuth authorization page."""
     auth_url = auth_service.get_authorization_url()
     return RedirectResponse(url=auth_url)
-
 
 @app.get("/api/auth/callback")
 async def auth_callback(code: Optional[str] = None, request: Request = None):
@@ -114,7 +106,6 @@ async def auth_callback(code: Optional[str] = None, request: Request = None):
 
     return RedirectResponse(url=auth_service.get_frontend_redirect_url(success=True))
 
-
 @app.get("/api/me")
 async def api_me(request: Request):
     """Get current user information from session."""
@@ -123,7 +114,6 @@ async def api_me(request: Request):
         return JSONResponse({"user": None})
     return JSONResponse({"user": user})
 
-
 @app.post("/api/logout")
 async def api_logout(request: Request):
     """Clear user session."""
@@ -131,8 +121,6 @@ async def api_logout(request: Request):
     request.session.pop("access_token", None)
     return JSONResponse({"ok": True})
 
-
-# Guild Routes
 @app.get("/api/guilds")
 async def api_guilds(request: Request):
     """Get guilds where the user is a member and the bot is also installed."""
@@ -168,7 +156,6 @@ async def api_guilds(request: Request):
 
 @app.get("/api/guilds/{guild_id}/channels")
 async def api_guild_channels(guild_id: str, request: Request):
-    """Get text channels for a specific guild."""
     access_token = request.session.get("access_token")
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -176,21 +163,16 @@ async def api_guild_channels(guild_id: str, request: Request):
     if not bot_service.is_ready():
         raise HTTPException(status_code=503, detail="Bot is not ready")
 
-    # Get the guild from the bot
     guild = bot_service.get_guild_by_id(int(guild_id))
     if not guild:
         raise HTTPException(status_code=404, detail="Guild not found or bot is not in this guild")
 
-    # Get text channels
     text_channels = [{"id": str(channel.id), "name": channel.name} for channel in guild.text_channels]
 
     return JSONResponse({"channels": text_channels})
 
-
-# Message Routes
 @app.post("/api/send-message")
 async def api_send_message(payload: SendMessageRequest, request: Request):
-    """Send a message to a Discord channel via the bot."""
     user = request.session.get("user")
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -220,7 +202,6 @@ async def api_get_messages(request: Request, limit: int = 50, message_type: str 
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # Limit the limit :)
     limit = min(limit, 100)
 
     messages = await message_service.get_history(limit=limit, message_type=message_type)
@@ -230,12 +211,10 @@ async def api_get_messages(request: Request, limit: int = 50, message_type: str 
 
 @app.get("/api/messages/dm")
 async def api_get_dm_messages(request: Request, limit: int = 50):
-    """Get direct messages sent to the bot."""
     user = request.session.get("user")
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # Limit the limit
     limit = min(limit, 100)
 
     messages = await message_service.get_dm_messages(limit=limit)
@@ -243,16 +222,12 @@ async def api_get_dm_messages(request: Request, limit: int = 50):
 
     return JSONResponse({"messages": messages})
 
-
-# Settings Routes
 @app.get("/api/guilds/{guild_id}/settings")
 async def api_get_guild_settings(guild_id: str, request: Request):
-    """Get bot settings for a specific guild."""
     user = request.session.get("user")
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # Verify user has access to this guild
     access_token = request.session.get("access_token")
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
@@ -263,13 +238,11 @@ async def api_get_guild_settings(guild_id: str, request: Request):
     if guild_id not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
-    # Get settings from database
     settings = await settings_service.get_settings(guild_id)
     
     if settings:
         return JSONResponse(settings)
     else:
-        # Return default empty settings if none exist
         return JSONResponse({
             "guild_id": guild_id,
             "settings": {},
@@ -279,12 +252,10 @@ async def api_get_guild_settings(guild_id: str, request: Request):
 
 @app.post("/api/guilds/{guild_id}/settings")
 async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsRequest, request: Request):
-    """Update bot settings for a specific guild."""
     user = request.session.get("user")
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # Verify user has access to this guild
     access_token = request.session.get("access_token")
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
@@ -295,7 +266,6 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
     if guild_id not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
-    # Verify bot is in the guild
     if not bot_service.is_ready():
         raise HTTPException(status_code=503, detail="Bot is not ready")
 
@@ -305,31 +275,24 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
     if guild_id not in bot_guild_ids:
         raise HTTPException(status_code=404, detail="Bot is not in this guild")
 
-    # Get old settings to check if nickname changed
     old_settings = await settings_service.get_settings(guild_id)
     old_nickname = old_settings.get("settings", {}).get("bot_nickname") if old_settings else None
     
-    # Convert Pydantic model to dict for storage
     settings_dict = payload.settings.model_dump(exclude_none=True)
     new_nickname = settings_dict.get("bot_nickname")
-
-    # Update settings in database
+    
     success = await settings_service.update_settings(guild_id, settings_dict)
     
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update settings")
 
-    # Check if bot_nickname changed and is not None
     if new_nickname and new_nickname != old_nickname:
         try:
-            # Get guild object
             guild = bot_service.get_guild_by_id(int(guild_id))
             if guild:
-                # Change bot nickname using the tool call
                 nickname_result = await bot_service._tool_change_bot_nickname(guild_id, new_nickname)
                 
                 if nickname_result.get("success"):
-                    # Generate announcement message using LLM
                     prompt = (
                         f"You just changed your nickname to '{new_nickname}' in the Discord server. "
                         f"Generate a short, friendly message announcing your new name. "
@@ -342,10 +305,8 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
                         system_prompt="You are a Discord bot announcing your new nickname. Be friendly and concise.",
                         use_tools=False
                     )
-                    
-                    # Send announcement to the first available text channel
+
                     if announcement and guild.text_channels:
-                        # Find the first channel the bot can send messages to
                         for channel in guild.text_channels:
                             if channel.permissions_for(guild.me).send_messages:
                                 await channel.send(announcement)
@@ -357,7 +318,6 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
             print(f"ERROR: Failed to change nickname or send announcement: {e}")
             import traceback
             traceback.print_exc()
-            # Don't fail the settings update if nickname change fails
 
     return JSONResponse({
         "ok": True,
@@ -368,12 +328,10 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
 
 @app.delete("/api/guilds/{guild_id}/settings")
 async def api_delete_guild_settings(guild_id: str, request: Request):
-    """Delete bot settings for a specific guild."""
     user = request.session.get("user")
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    # Verify user has access to this guild
     access_token = request.session.get("access_token")
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
@@ -384,7 +342,6 @@ async def api_delete_guild_settings(guild_id: str, request: Request):
     if guild_id not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
-    # Delete settings from database
     success = await settings_service.delete_settings(guild_id)
     
     if success:
@@ -395,3 +352,54 @@ async def api_delete_guild_settings(guild_id: str, request: Request):
         })
     else:
         raise HTTPException(status_code=500, detail="Failed to delete settings")
+
+@app.post("/api/guilds/{guild_id}/events")
+async def api_create_guild_event(guild_id: str, payload: EventCreateRequest, request: Request):
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    access_token = request.session.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated - no access token")
+
+    user_guilds = await auth_service.get_user_guilds(access_token)
+    user_guild_ids = {g["id"] for g in user_guilds}
+    if guild_id not in user_guild_ids:
+        raise HTTPException(status_code=403, detail="You don't have access to this guild")
+
+    user_id = user.get("id")
+
+    event_id = await event_service.create_event(
+        guild_id=guild_id,
+        user_id=user_id,
+        time_of_event=payload.time_of_event,
+        event_name=payload.event_name,
+        event_details=payload.event_details,
+    )
+
+    if event_id is None:
+        raise HTTPException(status_code=500, detail="Failed to create event")
+
+    return JSONResponse({"ok": True, "event_id": event_id, "guild_id": guild_id})
+
+
+@app.get("/api/guilds/{guild_id}/events")
+async def api_get_guild_events(guild_id: str, request: Request, limit: int = 50):
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    access_token = request.session.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated - no access token")
+
+    user_guilds = await auth_service.get_user_guilds(access_token)
+    user_guild_ids = {g["id"] for g in user_guilds}
+    if guild_id not in user_guild_ids:
+        raise HTTPException(status_code=403, detail="You don't have access to this guild")
+
+    limit = min(limit, 100)
+    events = await event_service.list_events(guild_id=guild_id, limit=limit)
+
+    return JSONResponse({"events": events})

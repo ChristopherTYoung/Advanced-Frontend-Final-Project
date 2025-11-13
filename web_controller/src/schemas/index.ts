@@ -90,3 +90,24 @@ export const SuccessResponseSchema = z.object({
 })
 
 export type SuccessResponse = z.infer<typeof SuccessResponseSchema>
+
+// Event schemas
+export const EventSchema = z.object({
+  event_id: z.number(),
+  user_id: z.string(),
+  guild_id: z.string(),
+  time_of_event: z.string(),
+  event_name: z.string(),
+  event_details: z.string(),
+})
+
+export type Event = z.infer<typeof EventSchema>
+
+export const EventCreateRequestSchema = z.object({
+  user_id: z.string(),
+  time_of_event: z.string(),
+  event_name: z.string().min(1).max(50),
+  event_details: z.string().max(200),
+})
+
+export type EventCreateRequest = z.infer<typeof EventCreateRequestSchema>

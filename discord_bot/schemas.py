@@ -1,5 +1,6 @@
 """Pydantic schemas for request/response validation."""
 
+from datetime import datetime
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 
@@ -163,3 +164,24 @@ class ChannelsResponse(BaseModel):
 class MessagesResponse(BaseModel):
     """Response containing list of messages."""
     messages: list[MessageInfo]
+
+
+# Event schemas
+class EventCreateRequest(BaseModel):
+    user_id: str = Field(..., description="User who created the event")
+    time_of_event: datetime = Field(..., description="Timestamp for the event")
+    event_name: str = Field(..., max_length=50)
+    event_details: str = Field(..., max_length=200)
+
+
+class EventInfo(BaseModel):
+    event_id: int
+    user_id: str
+    guild_id: str
+    time_of_event: datetime
+    event_name: str
+    event_details: str
+
+
+class EventsResponse(BaseModel):
+    events: list[EventInfo]

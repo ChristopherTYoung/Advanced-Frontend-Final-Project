@@ -6,14 +6,19 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth'
 import { queryClient } from './lib/queryClient'
+import { Toaster } from 'react-hot-toast'
+import AppErrorBoundary from './contexts/AppErrorBoundary.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </AppErrorBoundary>
+    <Toaster position="top-right" containerClassName='toast-container'/>
   </StrictMode>,
 )
