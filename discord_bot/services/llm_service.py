@@ -194,5 +194,23 @@ class LLMService:
             use_tools=use_tools
         )
 
+    def build_system_prompt(self, personality: Optional[str] = None, use_tools: bool = False) -> str:
+        personality_text = ""
+        if personality:
+            personality_text = f"\n\nIMPORTANT PERSONALITY: {personality}\nYou MUST respond according to this personality in all your messages."
+
+        if use_tools:
+            return (
+                "You are an assistant that can call tools to interact with Discord. "
+                "You may either: 1) call the `send_message` tool with arguments {guild_id, channel_id, message} to send a message, OR 2) return plain text in your assistant response which will be sent as-is to the channel. "
+                "Prefer concise, friendly announcements suitable for @everyone pings."
+                + personality_text
+            )
+        else:
+            return (
+                "You are a Discord announcement generator. Produce a concise, friendly announcement suitable for @everyone pings."
+                + personality_text
+            )
+
 # Singleton instance
 llm_service = LLMService()

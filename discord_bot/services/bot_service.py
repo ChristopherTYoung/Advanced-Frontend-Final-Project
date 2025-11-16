@@ -5,35 +5,38 @@ import asyncio
 from typing import Optional, List, Dict, Any
 from services.llm_service import llm_service
 
-
 class BotService:
-    """Service for managing Discord bot operations."""
-
     def __init__(self):
         self.bot_token = os.environ.get("DISCORD_BOT_TOKEN") or os.environ.get("VITE_DISCORD_BOT_TOKEN")
-        self.message_service = None  # Will be set by main.py
-        self.settings_service = None  # Will be set by main.py
+        self.message_service = None
+        self.settings_service = None
 
-        # Discord Bot Setup
         intents = discord.Intents.default()
         intents.guilds = True
         intents.guild_messages = True
-        intents.dm_messages = True  # Enable DM intents
-        intents.message_content = True  # Required to read message content
+        intents.dm_messages = True
+        intents.message_content = True
 
         self.bot = commands.Bot(command_prefix="!", intents=intents)
         self.bot_task: Optional[asyncio.Task] = None
-
-        # Register event handlers
+        
         self._register_events()
 
-        # Register LLM tools
         self._register_llm_tools()
+        
+    def message_is_mention(self, message):
+        bot_user = self.bot.user
+        if bot_user:
+            if bot_user in message.mentions:
+                return True
+            else:
+                content = message.content or ""
+                if f"<@{bot_user.id}>" in content or f"<@!{bot_user.id}>" in content:
+                    return True
+                    
+        return False
 
     def _register_llm_tools(self):
-        """Register tools that the LLM can call."""
-
-        # Tool: Get list of guilds (servers)
         llm_service.register_tool(
             name="get_guilds",
             description="Get a list of Discord servers (guilds) that the bot is in",
@@ -45,7 +48,6 @@ class BotService:
             function=self._tool_get_guilds,
         )
 
-        # Tool: Get channels in a guild
         llm_service.register_tool(
             name="get_channels",
             description="Get a list of text channels in a specific Discord server (guild)",
@@ -121,7 +123,6 @@ class BotService:
         )
 
     async def _tool_get_guilds(self) -> Dict[str, Any]:
-        """Tool function: Get list of guilds."""
         try:
             guilds = self.get_guilds()
             return {"success": True, "guilds": guilds, "count": len(guilds)}
@@ -129,7 +130,6 @@ class BotService:
             return {"success": False, "error": str(e)}
 
     async def _tool_get_channels(self, guild_id: str) -> Dict[str, Any]:
-        """Tool function: Get channels in a guild."""
         try:
             guild = self.get_guild_by_id(int(guild_id))
             if not guild:
@@ -146,37 +146,32 @@ class BotService:
     async def _tool_get_message_history(
         self, limit: int = 10, message_type: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Tool function: Get message history."""
         try:
             if not self.message_service:
                 return {"success": False, "error": "Message service not available"}
 
-            limit = min(limit, 50)  # Cap at 50
+            limit = min(limit, 50)
             messages = await self.message_service.get_history(limit=limit, message_type=message_type)
             return {"success": True, "messages": messages, "count": len(messages)}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     async def _tool_change_bot_nickname(self, guild_id: str, nickname: Optional[str] = None) -> Dict[str, Any]:
-        """Tool function: Change bot nickname in a guild."""
         try:
             guild = self.get_guild_by_id(int(guild_id))
             if not guild:
                 return {"success": False, "error": f"Guild with ID {guild_id} not found"}
 
-            # Get the bot's member object in the guild
             bot_member = guild.get_member(self.bot.user.id)
             if not bot_member:
                 return {"success": False, "error": "Bot is not a member of this guild"}
 
-            # Check if bot has permission to change its own nickname
             if not guild.me.guild_permissions.change_nickname:
                 return {
                     "success": False, 
                     "error": "Bot does not have permission to change its nickname in this guild"
                 }
 
-            # Change the nickname (empty string or None resets to default)
             old_nickname = bot_member.nick or self.bot.user.name
             await bot_member.edit(nick=nickname if nickname else None)
             new_nickname = nickname if nickname else self.bot.user.name
@@ -195,6 +190,64 @@ class BotService:
             return {"success": False, "error": f"Discord API error: {str(e)}"}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    async def announce_nickname_change(self, guild_id: str, old_nickname: str, new_nickname: str) -> None:
+        try:
+            if not self.is_ready():
+                print("DEBUG: Bot not ready; skipping nickname announcement")
+                return
+
+            nickname_result = await self._tool_change_bot_nickname(guild_id, new_nickname)
+
+            if not nickname_result.get("success"):
+                print(f"WARNING: Failed to change bot nickname: {nickname_result.get('error')}")
+                return
+
+            personality = await self._get_personality(guild_id)
+
+            system_prompt = llm_service.build_system_prompt(personality=personality, use_tools=False)
+
+            user_prompt = (
+                f"You just changed your nickname to '{new_nickname}' in the Discord server. "
+                f"Generate a short, friendly message announcing your new name. "
+                f"Be creative but concise (1-2 sentences max). "
+                f"Example style: 'Hello everyone! I am now {new_nickname} 😊'"
+            )
+
+            announcement = await llm_service.generate_response(
+                user_message=user_prompt,
+                system_prompt=system_prompt,
+                use_tools=False,
+            )
+
+            if not announcement:
+                print("DEBUG: No announcement generated by LLM")
+                return
+
+            guild = self.get_guild_by_id(int(guild_id))
+            if not guild:
+                print(f"WARNING: Guild {guild_id} not found when announcing nickname change")
+                return
+
+            target_channel_id = None
+            for channel in guild.text_channels:
+                if channel.permissions_for(guild.me).send_messages:
+                    target_channel_id = str(channel.id)
+                    break
+
+            if not target_channel_id:
+                print(f"WARNING: No suitable channel to send nickname announcement in guild {guild_id}")
+                return
+
+            send_result = await self._tool_send_message(guild_id, target_channel_id, announcement)
+            if not send_result.get("success"):
+                print(f"WARNING: Failed to send nickname announcement: {send_result.get('error')}")
+            else:
+                print(f"DEBUG: Sent nickname announcement in guild {guild_id}")
+
+        except Exception as e:
+            print(f"ERROR announcing nickname change: {e}")
+            import traceback; traceback.print_exc()
 
 
     async def _tool_send_message(self, guild_id: str, channel_id: str, message: str) -> Dict[str, Any]:
@@ -229,8 +282,6 @@ class BotService:
             return {"success": False, "error": str(e)}
 
     def _register_events(self):
-        """Register Discord bot event handlers."""
-
         @self.bot.event
         async def on_ready():
             print(f"Bot logged in as {self.bot.user}")
@@ -240,12 +291,10 @@ class BotService:
 
         @self.bot.event
         async def on_guild_join(guild: discord.Guild):
-            """Called when the bot joins a new guild."""
             print(f"Bot joined guild: {guild.name} (ID: {guild.id})")
 
         @self.bot.event
         async def on_guild_remove(guild: discord.Guild):
-            """Called when the bot is removed from a guild."""
             print(f"Bot removed from guild: {guild.name} (ID: {guild.id})")
 
         @self.bot.event
@@ -266,6 +315,9 @@ class BotService:
                 await self._handle_dm(message)
                 
             elif isinstance(message.channel, discord.TextChannel):
+                if not self.message_is_mention(message):
+                    return
+                
                 await self._handle_server_message(message)
 
             await self.bot.process_commands(message)
@@ -284,7 +336,6 @@ class BotService:
                     channel_id=channel_id
                 )
             elif guild_id and channel_id:
-                # Server messages - filter by guild and channel
                 messages = await self.message_service.get_history(
                     limit=limit * 2,
                     guild_id=guild_id,
@@ -293,19 +344,15 @@ class BotService:
             else:
                 messages = await self.message_service.get_history(limit=limit * 2)
 
-            # Convert to LLM format (limit to most recent)
             conversation = []
             for msg in messages[-limit:]:
                 msg_type = msg.get("type")
                 content = msg.get("content", "")
                 username = msg.get("username", "Unknown")
 
-                # Map message types to LLM roles
                 if msg_type == "sent":
-                    # Bot's messages
                     conversation.append({"role": "assistant", "content": content})
                 elif msg_type in ["dm", "received"]:
-                    # User's messages
                     conversation.append({"role": "user", "content": f"{username}: {content}"})
 
             return conversation
@@ -349,7 +396,6 @@ class BotService:
         
         print(f"DM received from {message.author.name}: {message.content}")
 
-        # Build conversation history for context (pass channel_id for DM filtering)
         conversation_history = await self._build_conversation_history(
             user_id=str(message.author.id), 
             channel_id=str(message.channel.id),
@@ -359,13 +405,12 @@ class BotService:
 
         print(f"DEBUG: Generating LLM response for DM from {message.author.name}")
         
-        # DMs don't have guild-specific personality
         llm_response = await llm_service.generate_discord_response(
             user_message=message.content, 
             username=message.author.name, 
             is_dm=True,
             conversation_history=conversation_history,
-            personality=None  # No personality for DMs
+            personality=None
         )
 
         if llm_response:
@@ -408,7 +453,6 @@ class BotService:
         else:
             print("WARNING: Message service not connected!")
 
-        # Build conversation history for context
         guild = message.guild
         conversation_history = await self._build_conversation_history(
             guild_id=str(guild.id) if guild else None,
@@ -416,8 +460,7 @@ class BotService:
             limit=10
         )
         print(f"DEBUG: Built conversation history with {len(conversation_history)} messages for server")
-
-        # Get personality settings for this guild
+        
         guild_id_str = str(guild.id) if guild else None
         personality = await self._get_personality(guild_id_str)
         if personality:
@@ -442,7 +485,6 @@ class BotService:
             sent_message = await message.channel.send(llm_response)
             print(f"DEBUG: LLM response sent to #{message.channel.name}")
 
-            # Track bot's response in history
             if self.message_service:
                 guild = message.guild
                 await self.message_service.add_to_history(
@@ -461,7 +503,6 @@ class BotService:
             await message.channel.send("Sorry, I'm having trouble generating a response right now.")
 
     async def start(self):
-        """Start the Discord bot."""
         print(f"DEBUG: DISCORD_BOT_TOKEN configured: {bool(self.bot_token)}")
         if self.bot_token:
             print(f"DEBUG: Token preview: {self.bot_token[:20]}...")
@@ -470,7 +511,6 @@ class BotService:
                 self.bot_task = asyncio.create_task(self.bot.start(self.bot_token))
                 print(f"DEBUG: Bot task created successfully")
 
-                # Add a callback to check for errors
                 def task_done_callback(task):
                     if task.exception():
                         print(f"ERROR: Bot task failed with exception: {task.exception()}")
@@ -490,17 +530,14 @@ class BotService:
             print("Warning: DISCORD_BOT_TOKEN not set, bot will not start")
 
     async def stop(self):
-        """Stop the Discord bot."""
         if self.bot_task and not self.bot_task.done():
             await self.bot.close()
             self.bot_task.cancel()
 
     def is_ready(self) -> bool:
-        """Check if bot is ready."""
         return self.bot.is_ready()
 
     def get_guilds(self) -> List[Dict[str, str]]:
-        """Get list of guilds the bot is in."""
         if not self.is_ready():
             return []
 
@@ -510,11 +547,9 @@ class BotService:
         ]
 
     def get_guild_by_id(self, guild_id: int):
-        """Get a guild by ID."""
         return self.bot.get_guild(guild_id)
 
     def get_channel_by_id(self, channel_id: int):
-        """Get a channel by ID."""
         return self.bot.get_channel(channel_id)
 
     async def send_message(self, channel_id: int, message: str, user_id: str = None, username: str = None) -> bool:
@@ -527,7 +562,6 @@ class BotService:
 
         sent_message = await channel.send(message)
 
-        # Track in message history
         if self.message_service:
             guild = channel.guild
             await self.message_service.add_to_history(
