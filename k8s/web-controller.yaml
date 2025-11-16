@@ -26,11 +26,6 @@ spec:
                 secretKeyRef:
                   name: discord-bot-secret
                   key: VITE_DISCORD_CLIENT_ID
-            - name: VITE_DISCORD_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: discord-bot-secret
-                  key: VITE_DISCORD_CLIENT_SECRET
             - name: VITE_DISCORD_BOT_URL
               valueFrom:
                 secretKeyRef:

@@ -36,6 +36,11 @@ spec:
                 secretKeyRef:
                   name: discord-bot-secret
                   key: VITE_DISCORD_BOT_URL
+            - name: VITE_DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: discord-bot-token
+                  key: VITE_DISCORD_BOT_TOKEN
             - name: FRONTEND_ORIGINS
               value: "https://discord-bot-controller.duckdns.org"
             - name: DISCORD_REDIRECT_URI
@@ -44,6 +49,11 @@ spec:
               value: "none"
             - name: DISCORD_SESSION_HTTPS_ONLY
               value: "true"
+            - name: DB_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: DB_CONNECTION_STRING
 
           resources:
             requests:

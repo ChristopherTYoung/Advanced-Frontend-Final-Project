@@ -14,14 +14,24 @@ jobs:
         uses: actions/checkout@v4
       - name: Create/update Kubernetes secret for Discord
         env:
-          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
-          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
-          DISCORD_BOT_URL: ${{ secrets.DISCORD_BOT_URL }}
+          VITE_DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
+          VITE_DISCORD_BOT_URL=${{ secrets.DISCORD_BOT_URL }}
+          VITE_DISCORD_BOT_TOKEN = ${{ secrets.VITE_DISCORD_BOT_TOKEN }}
+          DISCORD_CLIENT_SECRET = ${{ secrets.DISCORD_CLIENT_SECRET }}
+          POSTGRES_DB = ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER = ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD = ${{ secrets.POSTGRES_PASSWORD }}
+          DB_CONNECTION_STRING = ${{ secrets.DB_CONNECTION_STRING }}
         run: |
           kubectl create secret generic discord-bot-secret --namespace chris-discord \
             --from-literal=VITE_DISCORD_CLIENT_ID="${DISCORD_CLIENT_ID}" \
+            --from-literal=VITE_DISCORD_BOT_URL="${DISCORD_CLIENT_SECRET}" \
             --from-literal=VITE_DISCORD_CLIENT_SECRET="${DISCORD_CLIENT_SECRET}" \
             --from-literal=VITE_DISCORD_BOT_URL="${DISCORD_BOT_URL}" \
+            --from-literal=POSTGRES_DB="${POSTGRES_DB}" \
+            --from-literal=POSTGRES_USER="${POSTGRES_USER}" \
+            --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+            --from-literal=DB_CONNECTION_STRING="${DB_CONNECTION_STRING}" \           
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Apply manifests
