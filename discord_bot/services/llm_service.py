@@ -136,8 +136,39 @@ class LLMService:
                         content = None
                         if final_msg:
                             content = final_msg.get("content") or final_msg.get("text")
+                            if not content:
+                                reasoning = final_msg.get("reasoning_content") or final_msg.get("reasoning")
+                                if reasoning:
+                                    return reasoning
+
                         if content is not None:
                             return content
+
+                        try:
+                            last_tool_msg = None
+                            for m in reversed(messages):
+                                if isinstance(m, dict) and m.get("role") == "tool":
+                                    last_tool_msg = m
+                                    break
+
+                            if last_tool_msg:
+                                tool_content = last_tool_msg.get("content")
+                                try:
+                                    parsed = json.loads(tool_content)
+                                except Exception:
+                                    parsed = None
+
+                                if isinstance(parsed, dict):
+                                    if parsed.get("success") and parsed.get("proposal_id"):
+                                        return f"Proposal created (id: {parsed.get('proposal_id')})"
+                                    if parsed.get("success") and parsed.get("message"):
+                                        return str(parsed.get("message"))
+                                    return json.dumps(parsed)
+                                elif tool_content is not None:
+                                    return str(tool_content)[:1000]
+                        except Exception:
+                            pass
+
                         print("ERROR: No message content after tool-call rounds; last choice:", choice if 'choice' in locals() else message_response)
                         return None
 

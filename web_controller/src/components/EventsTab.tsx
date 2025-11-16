@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useGuilds } from '../hooks/useApi'
-import { useEvents, useCreateEvent, useProposals, useApproveProposal, useDeleteProposal } from '../hooks/useApi'
+import { useEvents, useCreateEvent, useProposals, useApproveProposal, useDeleteProposal, useCancelEvent } from '../hooks/useApi'
 import { useAuth } from '../auth'
 
 export const EventsTab: React.FC = () => {
@@ -10,6 +10,7 @@ export const EventsTab: React.FC = () => {
 
   const { data: events, isLoading: eventsLoading, refetch } = useEvents(selectedGuildId, !!selectedGuildId)
   const createEvent = useCreateEvent()
+  const cancelEvent = useCancelEvent()
   const { data: proposals, isLoading: proposalsLoading, refetch: refetchProposals } = useProposals(selectedGuildId, !!selectedGuildId)
   const approveProposal = useApproveProposal()
   const deleteProposalMutation = useDeleteProposal()
@@ -137,6 +138,24 @@ export const EventsTab: React.FC = () => {
                 <li key={ev.event_id}>
                   <strong>{ev.event_name}</strong> — {new Date(ev.time_of_event).toLocaleString()}
                   <div>{ev.event_details}</div>
+                  {ev.canceled ? (
+                    <div style={{ color: 'red', fontSize: 12 }}>Canceled: {new Date(ev.canceled).toLocaleString()}</div>
+                  ) : (
+                    <div style={{ marginTop: 6 }}>
+                      <button
+                        onClick={async () => {
+                          if (!selectedGuildId) return
+                          try {
+                            await cancelEvent.mutateAsync({ guildId: selectedGuildId, eventId: ev.event_id })
+                            refetch()
+                          } catch (err) {
+                            console.error('Cancel failed', err)
+                          }
+                        }}
+                        disabled={Boolean((cancelEvent as any).isLoading)}
+                      >Cancel</button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

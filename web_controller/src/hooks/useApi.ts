@@ -98,6 +98,18 @@ async function fetchEvents(guildId: string): Promise<Event[]> {
   return z.array(EventSchema).parse(eventsArray)
 }
 
+async function cancelEvent(guildId: string, eventId: number) {
+  const response = await fetch(api(`/api/guilds/${guildId}/events/${eventId}/cancel`), {
+    method: 'POST',
+    credentials: 'include',
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to cancel event')
+  }
+  return data
+}
+
 async function createEvent(params: { guildId: string; payload: EventCreateRequest }) {
   const validated = EventCreateRequestSchema.parse(params.payload)
 
@@ -212,7 +224,16 @@ async function fetchProposals(guildId: string): Promise<Proposal[]> {
   }
   const data = await response.json()
   const arr = data.proposals || []
-  return z.array(ProposalSchema).parse(arr)
+  const byId: Record<number, any> = {}
+  for (const p of arr) {
+    try {
+      const parsed = ProposalSchema.parse(p)
+      byId[parsed.proposal_id] = parsed
+    } catch (e) {
+      console.warn('Invalid proposal entry skipped', e)
+    }
+  }
+  return Object.values(byId) as Proposal[]
 }
 
 async function approveProposal(guildId: string, proposalId: number) {
@@ -245,6 +266,16 @@ export function useCreateEvent() {
   return useMutation({
     mutationFn: ({ guildId, payload }: { guildId: string; payload: EventCreateRequest }) =>
       createEvent({ guildId, payload }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['events', variables.guildId] })
+    },
+  })
+}
+
+export function useCancelEvent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ guildId, eventId }: { guildId: string; eventId: number }) => cancelEvent(guildId, eventId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['events', variables.guildId] })
     },

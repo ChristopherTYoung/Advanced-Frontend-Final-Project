@@ -91,6 +91,7 @@ export const EventSchema = z.object({
   time_of_event: z.string(),
   event_name: z.string(),
   event_details: z.string(),
+  canceled: z.string().nullable().optional(),
 })
 
 export type Event = z.infer<typeof EventSchema>

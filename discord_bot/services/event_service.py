@@ -56,7 +56,7 @@ class EventService:
         try:
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT event_id, user_id, guild_id, time_of_event, event_name, event_details FROM event WHERE guild_id = $1 ORDER BY time_of_event ASC LIMIT $2",
+                    "SELECT event_id, user_id, guild_id, time_of_event, event_name, event_details, canceled FROM event WHERE guild_id = $1 ORDER BY time_of_event ASC LIMIT $2",
                     guild_id,
                     limit,
                 )
@@ -69,6 +69,7 @@ class EventService:
                         "time_of_event": row["time_of_event"].isoformat(),
                         "event_name": row["event_name"],
                         "event_details": row["event_details"],
+                        "canceled": row["canceled"].isoformat() if row["canceled"] else None,
                     })
                 return events
         except Exception as e:
@@ -87,7 +88,7 @@ class EventService:
         try:
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT event_id, user_id, guild_id, time_of_event, event_name, event_details FROM event WHERE time_of_event <= $1 ORDER BY time_of_event ASC",
+                    "SELECT event_id, user_id, guild_id, time_of_event, event_name, event_details FROM event WHERE time_of_event <= $1 AND canceled IS NULL ORDER BY time_of_event ASC",
                     up_to,
                 )
                 events = []
@@ -116,6 +117,31 @@ class EventService:
                 return True
         except Exception as e:
             print(f"ERROR EventService: Failed to delete event {event_id}: {e}")
+            import traceback; traceback.print_exc()
+            return False
+
+    async def cancel_event(self, event_id: int, canceled_by: Optional[str] = None) -> bool:
+        """Mark an event as canceled by setting the canceled timestamp. Returns True if updated."""
+        if not self.db_pool:
+            print("WARNING EventService: Database pool not initialized")
+            return False
+        try:
+            async with self.db_pool.acquire() as conn:
+                result = await conn.execute(
+                    "UPDATE event SET canceled = NOW() WHERE event_id = $1",
+                    event_id,
+                )
+                # asyncpg returns command tag like 'UPDATE <n>' where <n> is number of rows
+                try:
+                    parts = result.split()
+                    if len(parts) >= 2:
+                        count = int(parts[-1])
+                        return count > 0
+                except Exception:
+                    pass
+                return False
+        except Exception as e:
+            print(f"ERROR EventService: Failed to cancel event {event_id}: {e}")
             import traceback; traceback.print_exc()
             return False
 

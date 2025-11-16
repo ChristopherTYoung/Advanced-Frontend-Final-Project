@@ -164,3 +164,23 @@ async def api_reject_proposal(guild_id: str, proposal_id: int, request: Request)
         raise HTTPException(status_code=500, detail="Failed to delete proposal")
 
     return JSONResponse({"ok": True})
+
+@router.post("/api/guilds/{guild_id}/events/{event_id}/cancel")
+async def api_cancel_event(guild_id: str, event_id: int, request: Request):
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    access_token = request.session.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated - no access token")
+
+    user_guilds = await auth_service.get_user_guilds(access_token)
+    if not _user_is_admin(user_guilds, guild_id):
+        raise HTTPException(status_code=403, detail="Admin permissions required to cancel events")
+
+    canceled = await event_service.cancel_event(event_id)
+    if not canceled:
+        raise HTTPException(status_code=500, detail="Failed to cancel event")
+
+    return JSONResponse({"ok": True})

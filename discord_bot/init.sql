@@ -33,7 +33,8 @@ CREATE TABLE event (
     guild_id VARCHAR(100) NOT NULL,
     time_of_event TIMESTAMP NOT NULL,
     event_name VARCHAR(50) NOT NULL,
-    event_details VARCHAR(200) NOT NULL
+    event_details VARCHAR(200) NOT NULL,
+    canceled TIMESTAMP DEFAULT(null)
 );
 
 CREATE INDEX idx_event_guild_id ON event(guild_id);
