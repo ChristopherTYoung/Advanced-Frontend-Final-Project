@@ -118,13 +118,18 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 
 ##### Features:
 - Scheduled events page
+- Event notifications
 - Event proposals
 - Event proposal page/view
 
 #### Delivered
 ##### Rubric Items:
+- Error handling (for api and render errors)
+- Toasts
 
 ##### Features
+- Scheduled events page
+- Event notifications
 
 ### Nov 15
 #### Estimates
