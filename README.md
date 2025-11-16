@@ -119,8 +119,6 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ##### Features:
 - Scheduled events page
 - Event notifications
-- Event proposals
-- Event proposal page/view
 
 #### Delivered
 ##### Rubric Items:
@@ -136,8 +134,8 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ##### Rubric Items:
 
 ##### Features:
-- Role permissions for bot
-- User management view
+- Event proposals
+- Event proposal page/view
 
 #### Delivered
 ##### Rubric Items:
@@ -149,9 +147,8 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ##### Rubric Items:
 
 ##### Features:
-- Scheduled events page
-- Event proposals
-- Event proposal page/view
+- Role permissions for bot
+- Role/User management view
 
 #### Delivered
 ##### Rubric Items:
@@ -164,7 +161,6 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 
 ##### Features:
 - Have AI review image content
-- Event notifications
 
 #### Delivered
 ##### Rubric Items:
@@ -189,7 +185,6 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ##### Rubric Items:
 
 ##### Features:
-- Settings page
 - Account tab
 - Notification preferences tab
 - Get message history
