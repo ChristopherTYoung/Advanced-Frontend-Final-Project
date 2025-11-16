@@ -4,8 +4,6 @@ from typing import Optional, Dict, Any, List, Callable
 
 
 class LLMService:
-    """Service for generating responses using an LLM."""
-
     def __init__(self, base_url: str = "http://ai-snow.reindeer-pinecone.ts.net:9292/v1", model: str = "gpt-oss-120b"):
         self.base_url = base_url
         self.model = model
@@ -45,21 +43,16 @@ class LLMService:
         use_tools: bool = False,
     ) -> Optional[str]:
         try:
-            # Build messages array
             messages = []
 
-            # Add system prompt if provided
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
 
-            # Add conversation history if provided
             if conversation_history:
                 messages.extend(conversation_history)
 
-            # Add current user message
             messages.append({"role": "user", "content": user_message})
 
-            # Prepare request payload
             payload = {
                 "model": self.model,
                 "messages": messages,
@@ -67,12 +60,10 @@ class LLMService:
                 "max_tokens": 500,
             }
 
-            # Add tools if enabled and available
             if use_tools and self.tools:
                 payload["tools"] = self.tools
                 payload["tool_choice"] = "auto"
 
-            # Make request to LLM
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(f"{self.base_url}/chat/completions", json=payload)
 
@@ -86,51 +77,70 @@ class LLMService:
                     choice = data["choices"][0]
                     message_response = choice.get("message", {})
 
-                    # Check if LLM wants to call a tool
                     if use_tools and "tool_calls" in message_response:
-                        tool_calls = message_response["tool_calls"]
-                        print(f"DEBUG: LLM requested {len(tool_calls)} tool call(s)")
+                        max_rounds = 3
+                        round_idx = 0
 
-                        # Add assistant's message with tool calls to history
                         messages.append(message_response)
 
-                        # Execute each tool call
-                        for tool_call in tool_calls:
-                            function_name = tool_call["function"]["name"]
-                            function_args = json.loads(tool_call["function"]["arguments"])
-                            tool_call_id = tool_call["id"]
+                        while round_idx < max_rounds and "tool_calls" in message_response:
+                            tool_calls = message_response.get("tool_calls", [])
+                            print(f"DEBUG: LLM requested {len(tool_calls)} tool call(s) in round {round_idx}")
 
-                            print(f"DEBUG: Executing tool '{function_name}' with args: {function_args}")
-                            tool_result = await self.execute_tool_call(function_name, function_args)
+                            for tool_call in tool_calls:
+                                function_name = tool_call["function"]["name"]
+                                raw_args = tool_call["function"].get("arguments", "{}")
+                                try:
+                                    function_args = json.loads(raw_args)
+                                except Exception:
+                                    function_args = {"arguments": raw_args}
+                                tool_call_id = tool_call.get("id")
 
-                            # Add tool result to messages
-                            messages.append(
-                                {
+                                print(f"DEBUG: Executing tool '{function_name}' with args: {function_args}")
+                                tool_result = await self.execute_tool_call(function_name, function_args)
+                                print(f"DEBUG: Tool '{function_name}' returned: {tool_result}")
+
+                                try:
+                                    tool_content = json.dumps(tool_result)
+                                except Exception:
+                                    try:
+                                        tool_content = json.dumps(tool_result, default=str)
+                                    except Exception:
+                                        tool_content = json.dumps({"result": str(tool_result)})
+
+                                messages.append({
                                     "role": "tool",
                                     "tool_call_id": tool_call_id,
                                     "name": function_name,
-                                    "content": json.dumps(tool_result),
-                                }
-                            )
+                                    "content": tool_content,
+                                })
 
-                        # Make a second request with the tool results
-                        payload["messages"] = messages
-                        second_response = await client.post(f"{self.base_url}/chat/completions", json=payload)
-
-                        if second_response.status_code == 200:
-                            second_data = second_response.json()
-                            if "choices" in second_data and len(second_data["choices"]) > 0:
-                                return second_data["choices"][0]["message"]["content"]
-                            else:
-                                print(f"ERROR: Unexpected second LLM response format: {second_data}")
+                            payload["messages"] = messages
+                            follow = await client.post(f"{self.base_url}/chat/completions", json=payload)
+                            if follow.status_code != 200:
+                                print(f"ERROR: Follow-up LLM request returned status {follow.status_code}: {follow.text}")
                                 return None
-                        else:
-                            print(
-                                f"ERROR: Second LLM request returned status {second_response.status_code}: {second_response.text}"
-                            )
-                            return None
 
-                    # No tool calls, return regular response
+                            follow_data = follow.json()
+                            print(f"DEBUG: Follow-up LLM response (round {round_idx}): {follow_data}")
+
+                            if "choices" not in follow_data or len(follow_data["choices"]) == 0:
+                                print(f"ERROR: Unexpected follow-up LLM response format: {follow_data}")
+                                return None
+
+                            choice = follow_data["choices"][0]
+                            message_response = choice.get("message", {})
+                            round_idx += 1
+
+                        final_msg = message_response if isinstance(message_response, dict) else None
+                        content = None
+                        if final_msg:
+                            content = final_msg.get("content") or final_msg.get("text")
+                        if content is not None:
+                            return content
+                        print("ERROR: No message content after tool-call rounds; last choice:", choice if 'choice' in locals() else message_response)
+                        return None
+
                     return message_response.get("content")
                 else:
                     print(f"ERROR: LLM API returned status {response.status_code}: {response.text}")
@@ -158,7 +168,6 @@ class LLMService:
         use_tools: bool = True,
         personality: Optional[str] = None
     ) -> Optional[str]:
-        # Build personality instruction if provided
         personality_instruction = ""
         if personality:
             personality_instruction = f"\n\nIMPORTANT PERSONALITY: {personality}\nYou MUST respond according to this personality in all your messages."
@@ -171,7 +180,6 @@ class LLMService:
                 f"Discord servers and channels.{personality_instruction}"
             )
         else:
-            # Build context about the current server
             server_context = f"You are currently in the server '{guild_name}' (ID: {guild_id})" if guild_name and guild_id else "You are in a Discord server"
             channel_context = f" in the channel #{channel_name}" if channel_name else ""
             
@@ -184,6 +192,7 @@ class LLMService:
                 "- get_guilds: Get list of all servers the bot is in\n"
                 f"- get_channels: Get channels in a specific server (use guild_id: '{guild_id}' for this server)\n"
                 f"- get_message_history: Get recent message history"
+                f"- propose_event: Add an event to the proposal table with the time of event, name, and details. Also, include the name of the user that made the proposal"
                 f"{personality_instruction}"
             )
 

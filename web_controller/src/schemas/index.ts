@@ -1,6 +1,5 @@
 import { z } from 'zod'
 
-// User schema
 export const UserSchema = z.object({
   id: z.string(),
   username: z.string(),
@@ -11,7 +10,6 @@ export const UserSchema = z.object({
 
 export type User = z.infer<typeof UserSchema>
 
-// Guild schema
 export const GuildSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -22,7 +20,6 @@ export const GuildSchema = z.object({
 
 export type Guild = z.infer<typeof GuildSchema>
 
-// Channel schema
 export const ChannelSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -31,7 +28,6 @@ export const ChannelSchema = z.object({
 
 export type Channel = z.infer<typeof ChannelSchema>
 
-// Message schema
 export const MessageSchema = z.object({
   id: z.string(),
   type: z.string(),
@@ -47,7 +43,6 @@ export const MessageSchema = z.object({
 
 export type Message = z.infer<typeof MessageSchema>
 
-// Guild settings schema
 export const GuildSettingsSchema = z.object({
   guild_id: z.string(),
   settings: z.object({
@@ -59,7 +54,6 @@ export const GuildSettingsSchema = z.object({
 
 export type GuildSettings = z.infer<typeof GuildSettingsSchema>
 
-// Request schemas
 export const SendMessageRequestSchema = z.object({
   guild_id: z.string(),
   channel_id: z.string(),
@@ -77,7 +71,6 @@ export const UpdateGuildSettingsRequestSchema = z.object({
 
 export type UpdateGuildSettingsRequest = z.infer<typeof UpdateGuildSettingsRequestSchema>
 
-// Response schemas
 export const ApiErrorSchema = z.object({
   error: z.string(),
   detail: z.string().optional(),
@@ -91,7 +84,6 @@ export const SuccessResponseSchema = z.object({
 
 export type SuccessResponse = z.infer<typeof SuccessResponseSchema>
 
-// Event schemas
 export const EventSchema = z.object({
   event_id: z.number(),
   user_id: z.string(),
@@ -111,3 +103,27 @@ export const EventCreateRequestSchema = z.object({
 })
 
 export type EventCreateRequest = z.infer<typeof EventCreateRequestSchema>
+
+export const ProposalSchema = z.object({
+  proposal_id: z.number(),
+  user_id: z.string(),
+  guild_id: z.string(),
+  created_at: z.string(),
+  time_of_event: z.string(),
+  event_name: z.string(),
+  event_details: z.string().optional(),
+  approved: z.boolean(),
+  time_approved: z.string().nullable(),
+  event_id: z.number().nullable(),
+})
+
+export type Proposal = z.infer<typeof ProposalSchema>
+
+export const ProposalCreateRequestSchema = z.object({
+  user_id: z.string(),
+  time_of_event: z.string(),
+  event_name: z.string().min(1).max(50),
+  event_details: z.string().max(500).optional(),
+})
+
+export type ProposalCreateRequest = z.infer<typeof ProposalCreateRequestSchema>

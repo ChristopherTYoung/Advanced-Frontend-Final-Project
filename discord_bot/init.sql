@@ -38,3 +38,19 @@ CREATE TABLE event (
 
 CREATE INDEX idx_event_guild_id ON event(guild_id);
 CREATE INDEX idx_event_user_id ON event(user_id);
+
+CREATE TABLE event_proposal (
+    proposal_id SERIAL PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    guild_id VARCHAR(100) NOT NULL,
+    time_of_event TIMESTAMP NOT NULL,
+    event_name VARCHAR(50) NOT NULL,
+    event_details VARCHAR(200) NOT NULL,
+    approved BOOLEAN NOT NULL DEFAULT FALSE,
+    time_approved TIMESTAMP NULL,
+    event_id INTEGER NULL REFERENCES event(event_id)
+);
+
+CREATE INDEX idx_event_proposal_guild_id ON event_proposal(guild_id);
+CREATE INDEX idx_event_proposal_user_id ON event_proposal(user_id);

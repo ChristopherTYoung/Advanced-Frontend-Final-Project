@@ -15,24 +15,9 @@ from services.message_service import message_service
 from services.settings_service import settings_service
 from services.llm_service import llm_service
 from services.event_service import event_service
+from services.llm_tools import tool_send_message
 from schemas import (
-    SendMessageRequest,
-    UpdateSettingsRequest,
-    SuccessResponse,
-    MessageSentResponse,
-    SettingsUpdatedResponse,
-    SettingsDeletedResponse,
-    GuildSettingsResponse,
-    MeResponse,
-    LogoutResponse,
-    GuildsResponse,
-    ChannelsResponse,
-    MessagesResponse,
-    GuildInfo,
-    ChannelInfo,
-    MessageInfo,
-    EventCreateRequest,
-    EventsResponse,
+    SendMessageRequest
 )
 
 app = FastAPI()
@@ -105,7 +90,7 @@ async def startup_event():
 
                         if resp:
                             try:
-                                await bot_service._tool_send_message(ev['guild_id'], target_channel_id, resp)
+                                await tool_send_message(bot_service, ev['guild_id'], target_channel_id, resp)
                                 print(f"DEBUG: Sent free-form LLM announcement for event {ev['event_id']}")
                             except Exception as e:
                                 print(f"ERROR sending free-form LLM announcement for event {ev['event_id']}: {e}")

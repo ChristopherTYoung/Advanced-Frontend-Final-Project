@@ -4,6 +4,7 @@ from discord.ext import commands
 import asyncio
 from typing import Optional, List, Dict, Any
 from services.llm_service import llm_service
+from services.llm_tools import register_tools, tool_change_bot_nickname, tool_send_message
 
 class BotService:
     def __init__(self):
@@ -22,7 +23,7 @@ class BotService:
         
         self._register_events()
 
-        self._register_llm_tools()
+        register_tools(llm_service, self)
         
     def message_is_mention(self, message):
         bot_user = self.bot.user
@@ -36,168 +37,13 @@ class BotService:
                     
         return False
 
-    def _register_llm_tools(self):
-        llm_service.register_tool(
-            name="get_guilds",
-            description="Get a list of Discord servers (guilds) that the bot is in",
-            parameters={
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-            function=self._tool_get_guilds,
-        )
-
-        llm_service.register_tool(
-            name="get_channels",
-            description="Get a list of text channels in a specific Discord server (guild)",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "guild_id": {
-                        "type": "string",
-                        "description": "The ID of the guild/server to get channels from",
-                    }
-                },
-                "required": ["guild_id"],
-            },
-            function=self._tool_get_channels,
-        )
-
-        # Tool: Get message history
-        llm_service.register_tool(
-            name="get_message_history",
-            description="Get recent message history from the bot",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of messages to return (default 10, max 50)",
-                        "default": 10,
-                    },
-                    "message_type": {
-                        "type": "string",
-                        "description": "Filter by message type: 'dm', 'received', or 'sent'",
-                        "enum": ["dm", "received", "sent"],
-                    },
-                },
-                "required": [],
-            },
-            function=self._tool_get_message_history,
-        )
-
-        llm_service.register_tool(
-            name="change_bot_nickname",
-            description="Change the bot's nickname in a specific Discord server (guild)",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "guild_id": {
-                        "type": "string",
-                        "description": "The ID of the guild/server where the nickname should be changed",
-                    },
-                    "nickname": {
-                        "type": "string",
-                        "description": "The new nickname for the bot (max 32 characters). Use null or empty string to reset to default username.",
-                    },
-                },
-                "required": ["guild_id"],
-            },
-            function=self._tool_change_bot_nickname,
-        )
-
-        llm_service.register_tool(
-            name="send_message",
-            description="Send a message to a specific channel in a guild",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "guild_id": {"type": "string", "description": "Guild ID where to send the message"},
-                    "channel_id": {"type": "string", "description": "Channel ID where to send the message"},
-                    "message": {"type": "string", "description": "Message content to send"},
-                },
-                "required": ["guild_id", "channel_id", "message"],
-            },
-            function=self._tool_send_message,
-        )
-
-    async def _tool_get_guilds(self) -> Dict[str, Any]:
-        try:
-            guilds = self.get_guilds()
-            return {"success": True, "guilds": guilds, "count": len(guilds)}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    async def _tool_get_channels(self, guild_id: str) -> Dict[str, Any]:
-        try:
-            guild = self.get_guild_by_id(int(guild_id))
-            if not guild:
-                return {"success": False, "error": "Guild not found"}
-
-            channels = [
-                {"id": str(channel.id), "name": channel.name, "type": "text"}
-                for channel in guild.text_channels
-            ]
-            return {"success": True, "guild_name": guild.name, "channels": channels, "count": len(channels)}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    async def _tool_get_message_history(
-        self, limit: int = 10, message_type: Optional[str] = None
-    ) -> Dict[str, Any]:
-        try:
-            if not self.message_service:
-                return {"success": False, "error": "Message service not available"}
-
-            limit = min(limit, 50)
-            messages = await self.message_service.get_history(limit=limit, message_type=message_type)
-            return {"success": True, "messages": messages, "count": len(messages)}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    async def _tool_change_bot_nickname(self, guild_id: str, nickname: Optional[str] = None) -> Dict[str, Any]:
-        try:
-            guild = self.get_guild_by_id(int(guild_id))
-            if not guild:
-                return {"success": False, "error": f"Guild with ID {guild_id} not found"}
-
-            bot_member = guild.get_member(self.bot.user.id)
-            if not bot_member:
-                return {"success": False, "error": "Bot is not a member of this guild"}
-
-            if not guild.me.guild_permissions.change_nickname:
-                return {
-                    "success": False, 
-                    "error": "Bot does not have permission to change its nickname in this guild"
-                }
-
-            old_nickname = bot_member.nick or self.bot.user.name
-            await bot_member.edit(nick=nickname if nickname else None)
-            new_nickname = nickname if nickname else self.bot.user.name
-
-            return {
-                "success": True,
-                "message": f"Bot nickname changed in {guild.name}",
-                "old_nickname": old_nickname,
-                "new_nickname": new_nickname,
-                "guild_name": guild.name,
-                "guild_id": guild_id
-            }
-        except discord.Forbidden:
-            return {"success": False, "error": "Bot lacks permissions to change nickname"}
-        except discord.HTTPException as e:
-            return {"success": False, "error": f"Discord API error: {str(e)}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
     async def announce_nickname_change(self, guild_id: str, old_nickname: str, new_nickname: str) -> None:
         try:
             if not self.is_ready():
                 print("DEBUG: Bot not ready; skipping nickname announcement")
                 return
 
-            nickname_result = await self._tool_change_bot_nickname(guild_id, new_nickname)
+            nickname_result = await tool_change_bot_nickname(self, guild_id, new_nickname)
 
             if not nickname_result.get("success"):
                 print(f"WARNING: Failed to change bot nickname: {nickname_result.get('error')}")
@@ -239,7 +85,7 @@ class BotService:
                 print(f"WARNING: No suitable channel to send nickname announcement in guild {guild_id}")
                 return
 
-            send_result = await self._tool_send_message(guild_id, target_channel_id, announcement)
+            send_result = await tool_send_message(self, guild_id, target_channel_id, announcement)
             if not send_result.get("success"):
                 print(f"WARNING: Failed to send nickname announcement: {send_result.get('error')}")
             else:
@@ -250,36 +96,7 @@ class BotService:
             import traceback; traceback.print_exc()
 
 
-    async def _tool_send_message(self, guild_id: str, channel_id: str, message: str) -> Dict[str, Any]:
-        try:
-            if not self.is_ready():
-                return {"success": False, "error": "Bot is not ready"}
-
-            guild = self.get_guild_by_id(int(guild_id))
-            if not guild:
-                return {"success": False, "error": "Guild not found"}
-
-            channel = None
-            for ch in guild.text_channels:
-                if str(ch.id) == str(channel_id):
-                    channel = ch
-                    break
-
-            if not channel:
-                # Try to fetch by id globally
-                ch_obj = self.get_channel_by_id(int(channel_id))
-                if ch_obj and isinstance(ch_obj, discord.TextChannel):
-                    channel = ch_obj
-
-            if not channel:
-                return {"success": False, "error": "Channel not found or not a text channel"}
-
-            await self.send_message(int(channel.id), message)
-            return {"success": True, "message": "Message sent"}
-        except discord.Forbidden:
-            return {"success": False, "error": "Bot lacks permissions to send message in that channel"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+    
 
     def _register_events(self):
         @self.bot.event
@@ -524,7 +341,6 @@ class BotService:
             except Exception as e:
                 print(f"ERROR starting bot: {e}")
                 import traceback
-
                 traceback.print_exc()
         else:
             print("Warning: DISCORD_BOT_TOKEN not set, bot will not start")

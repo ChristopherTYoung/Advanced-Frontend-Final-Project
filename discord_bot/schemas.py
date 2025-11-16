@@ -187,3 +187,26 @@ class EventInfo(BaseModel):
 
 class EventsResponse(BaseModel):
     events: list[EventInfo]
+
+class ProposalCreateRequest(BaseModel):
+    user_id: str = Field(..., description="User who proposed the event")
+    time_of_event: datetime = Field(..., description="Proposed event timestamp")
+    event_name: str = Field(..., max_length=50)
+    event_details: str = Field(..., max_length=200)
+
+
+class ProposalInfo(BaseModel):
+    proposal_id: int
+    user_id: str
+    guild_id: str
+    time_of_event: datetime
+    event_name: str
+    event_details: str
+    created_at: Optional[datetime]
+    approved: Optional[bool]
+    time_approved: Optional[datetime]
+    event_id: Optional[int]
+
+
+class ProposalsResponse(BaseModel):
+    proposals: list[ProposalInfo]

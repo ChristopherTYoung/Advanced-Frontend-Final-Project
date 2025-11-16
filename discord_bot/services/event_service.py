@@ -119,6 +119,141 @@ class EventService:
             import traceback; traceback.print_exc()
             return False
 
+    # --- Proposal methods ---
+    async def create_proposal(self, guild_id: str, user_id: str, time_of_event: datetime, event_name: str, event_details: str) -> Optional[int]:
+        if not self.db_pool:
+            print("WARNING EventService: Database pool not initialized")
+            return None
+        try:
+            if time_of_event.tzinfo is not None:
+                try:
+                    time_of_event = time_of_event.astimezone(timezone.utc).replace(tzinfo=None)
+                except Exception:
+                    time_of_event = time_of_event.replace(tzinfo=None)
+            async with self.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    INSERT INTO event_proposal (user_id, guild_id, time_of_event, event_name, event_details)
+                    VALUES ($1, $2, $3, $4, $5)
+                    RETURNING proposal_id
+                    """,
+                    user_id,
+                    guild_id,
+                    time_of_event,
+                    event_name,
+                    event_details,
+                )
+                return int(row["proposal_id"]) if row else None
+        except Exception as e:
+            print(f"ERROR EventService: Failed to create proposal: {e}")
+            import traceback; traceback.print_exc()
+            return None
+
+    async def list_proposals(self, guild_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+        if not self.db_pool:
+            print("WARNING EventService: Database pool not initialized")
+            return []
+        try:
+            async with self.db_pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT proposal_id, user_id, guild_id, time_of_event, event_name, event_details, created_at, approved, time_approved, event_id FROM event_proposal WHERE guild_id = $1 ORDER BY created_at ASC LIMIT $2",
+                    guild_id,
+                    limit,
+                )
+                proposals = []
+                for row in rows:
+                    proposals.append({
+                        "proposal_id": int(row["proposal_id"]),
+                        "user_id": row["user_id"],
+                        "guild_id": row["guild_id"],
+                        "time_of_event": row["time_of_event"].isoformat(),
+                        "event_name": row["event_name"],
+                        "event_details": row["event_details"],
+                        "created_at": row["created_at"].isoformat(),
+                        "approved": bool(row["approved"]),
+                        "time_approved": row["time_approved"].isoformat() if row["time_approved"] else None,
+                        "event_id": int(row["event_id"]) if row["event_id"] else None,
+                    })
+                return proposals
+        except Exception as e:
+            print(f"ERROR EventService: Failed to list proposals: {e}")
+            import traceback; traceback.print_exc()
+            return []
+
+    async def get_proposal(self, proposal_id: int) -> Optional[Dict[str, Any]]:
+        if not self.db_pool:
+            print("WARNING EventService: Database pool not initialized")
+            return None
+        try:
+            async with self.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT proposal_id, user_id, guild_id, time_of_event, event_name, event_details, created_at, approved, time_approved, event_id FROM event_proposal WHERE proposal_id = $1",
+                    proposal_id,
+                )
+                if not row:
+                    return None
+                return {
+                    "proposal_id": int(row["proposal_id"]),
+                    "user_id": row["user_id"],
+                    "guild_id": row["guild_id"],
+                    "time_of_event": row["time_of_event"].isoformat(),
+                    "event_name": row["event_name"],
+                    "event_details": row["event_details"],
+                    "created_at": row["created_at"].isoformat(),
+                    "approved": bool(row["approved"]),
+                    "time_approved": row["time_approved"].isoformat() if row["time_approved"] else None,
+                    "event_id": int(row["event_id"]) if row["event_id"] else None,
+                }
+        except Exception as e:
+            print(f"ERROR EventService: Failed to fetch proposal {proposal_id}: {e}")
+            import traceback; traceback.print_exc()
+            return None
+
+    async def approve_proposal(self, proposal_id: int, approver_user_id: str) -> Optional[int]:
+        """Approve a proposal: create an event and mark the proposal approved with timestamps and FK to event."""
+        proposal = await self.get_proposal(proposal_id)
+        if not proposal:
+            return None
+        try:
+            from datetime import datetime
+
+            time_of_event = datetime.fromisoformat(proposal["time_of_event"])
+            event_id = await self.create_event(
+                guild_id=proposal["guild_id"],
+                user_id=proposal["user_id"],
+                time_of_event=time_of_event,
+                event_name=proposal["event_name"],
+                event_details=proposal["event_details"],
+            )
+            if event_id is None:
+                return None
+
+            async with self.db_pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE event_proposal SET approved = TRUE, time_approved = NOW(), event_id = $1 WHERE proposal_id = $2",
+                    event_id,
+                    proposal_id,
+                )
+
+            return event_id
+        except Exception as e:
+            print(f"ERROR EventService: Failed to approve proposal {proposal_id}: {e}")
+            import traceback; traceback.print_exc()
+            return None
+
+    async def delete_proposal(self, proposal_id: int) -> bool:
+        if not self.db_pool:
+            print("WARNING EventService: Database pool not initialized")
+            return False
+        try:
+            async with self.db_pool.acquire() as conn:
+                await conn.execute("DELETE FROM event_proposal WHERE proposal_id = $1", proposal_id)
+                return True
+        except Exception as e:
+            print(f"ERROR EventService: Failed to delete proposal {proposal_id}: {e}")
+            import traceback; traceback.print_exc()
+            return False
+
 
 # Singleton instance
 event_service = EventService()

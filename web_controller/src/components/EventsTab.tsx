@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useGuilds } from '../hooks/useApi'
-import { useEvents, useCreateEvent } from '../hooks/useApi'
+import { useEvents, useCreateEvent, useProposals, useApproveProposal, useDeleteProposal } from '../hooks/useApi'
 import { useAuth } from '../auth'
 
 export const EventsTab: React.FC = () => {
@@ -10,6 +10,9 @@ export const EventsTab: React.FC = () => {
 
   const { data: events, isLoading: eventsLoading, refetch } = useEvents(selectedGuildId, !!selectedGuildId)
   const createEvent = useCreateEvent()
+  const { data: proposals, isLoading: proposalsLoading, refetch: refetchProposals } = useProposals(selectedGuildId, !!selectedGuildId)
+  const approveProposal = useApproveProposal()
+  const deleteProposalMutation = useDeleteProposal()
 
   const [eventName, setEventName] = useState('')
   const [eventDetails, setEventDetails] = useState('')
@@ -28,6 +31,16 @@ export const EventsTab: React.FC = () => {
     if (!events) return []
     return [...events].sort((a, b) => new Date(a.time_of_event).getTime() - new Date(b.time_of_event).getTime())
   }, [events])
+
+  const pendingProposals = useMemo(() => {
+    if (!proposals) return []
+    return [...proposals].filter(p => !p.approved).sort((a, b) => new Date(a.time_of_event).getTime() - new Date(b.time_of_event).getTime())
+  }, [proposals])
+
+  const approvedProposals = useMemo(() => {
+    if (!proposals) return []
+    return [...proposals].filter(p => p.approved).sort((a, b) => new Date(a.time_of_event).getTime() - new Date(b.time_of_event).getTime())
+  }, [proposals])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -105,7 +118,7 @@ export const EventsTab: React.FC = () => {
             </div>
 
             <div style={{ marginTop: 8 }}>
-              <button type="submit" disabled={createEvent.isLoading}>Add Event</button>
+              <button type="submit" disabled={Boolean((createEvent as any).isLoading)}>Add Event</button>
             </div>
 
             {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
@@ -127,6 +140,68 @@ export const EventsTab: React.FC = () => {
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+        <div style={{ flex: 1 }}>
+          <h3>Event Proposals</h3>
+          {proposalsLoading ? (
+            <div>Loading proposals...</div>
+          ) : (
+            <>
+              <h4>Pending</h4>
+              <ul>
+                {pendingProposals.length === 0 && <li>No pending proposals</li>}
+                {pendingProposals.map((p) => (
+                  <li key={p.proposal_id} style={{ marginBottom: 8 }}>
+                    <strong>{p.event_name}</strong> — {new Date(p.time_of_event).toLocaleString()}
+                    <div>{p.event_details}</div>
+                    <div style={{ marginTop: 6 }}>
+                      <button
+                        onClick={async () => {
+                          if (!selectedGuildId) return
+                          try {
+                            await approveProposal.mutateAsync({ guildId: selectedGuildId, proposalId: p.proposal_id })
+                            refetchProposals()
+                            refetch()
+                          } catch (err: any) {
+                            console.error('Approve failed', err)
+                          }
+                        }}
+                        disabled={Boolean((approveProposal as any).isLoading)}
+                      >Approve</button>
+                      <button
+                        onClick={async () => {
+                          if (!selectedGuildId) return
+                          try {
+                            await deleteProposalMutation.mutateAsync({ guildId: selectedGuildId, proposalId: p.proposal_id })
+                            refetchProposals()
+                          } catch (err) {
+                            console.error('Delete failed', err)
+                          }
+                        }}
+                        style={{ marginLeft: 8 }}
+                        disabled={Boolean((deleteProposalMutation as any).isLoading)}
+                      >Reject</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              <h4>Approved</h4>
+              <ul>
+                {approvedProposals.length === 0 && <li>No approved proposals</li>}
+                {approvedProposals.map((p) => (
+                  <li key={p.proposal_id}>
+                    <strong>{p.event_name}</strong> — {new Date(p.time_of_event).toLocaleString()}
+                    <div>{p.event_details}</div>
+                    <div style={{ color: '#666', fontSize: 12 }}>
+                      Approved at: {p.time_approved ? new Date(p.time_approved).toLocaleString() : '—'}
+                      {p.event_id ? ` — event id ${p.event_id}` : ''}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       </div>
