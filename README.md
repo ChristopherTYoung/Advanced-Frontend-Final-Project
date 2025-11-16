@@ -141,6 +141,8 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ##### Rubric Items:
 
 ##### Features
+- Event proposals
+- Event proposal page/view
 
 ### Nov 19
 #### Estimates
