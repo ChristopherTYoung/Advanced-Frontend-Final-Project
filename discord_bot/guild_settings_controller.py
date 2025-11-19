@@ -109,7 +109,9 @@ async def api_delete_guild_settings(guild_id: str, request: Request):
     else:
         raise HTTPException(status_code=500, detail="Failed to delete settings")
 
-
+# Roles will already have some permissions via discord
+# Do we check for those to? 
+# We will need separate permissions for managing the bot
 @router.get("/api/guilds/{guild_id}/roles")
 async def api_get_guild_roles(guild_id: str, request: Request):
     user = request.session.get("user")
