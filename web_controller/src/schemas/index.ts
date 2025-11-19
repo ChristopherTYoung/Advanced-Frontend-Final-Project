@@ -120,6 +120,21 @@ export const ProposalSchema = z.object({
 
 export type Proposal = z.infer<typeof ProposalSchema>
 
+export const EventProposalSchema = z.object({
+  proposal_id: z.number(),
+  user_id: z.string(),
+  guild_id: z.string(),
+  created_at: z.string(),
+  time_of_event: z.string(),
+  event_name: z.string(),
+  approved: z.boolean(),
+  time_approved: z.string().nullable(),
+  event_id: z.number().nullable(),
+  event_details: z.string().optional(),
+})
+
+export type EventProposal = z.infer<typeof EventProposalSchema>
+
 export const ProposalCreateRequestSchema = z.object({
   user_id: z.string(),
   time_of_event: z.string(),
@@ -128,3 +143,10 @@ export const ProposalCreateRequestSchema = z.object({
 })
 
 export type ProposalCreateRequest = z.infer<typeof ProposalCreateRequestSchema>
+
+export const ProposalMutationPropsSchema = z.object({
+  guildId: z.string(),
+  proposalId: z.number(),
+})
+
+export type ProposalMutationProps = z.infer<typeof ProposalMutationPropsSchema>

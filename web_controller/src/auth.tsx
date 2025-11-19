@@ -61,7 +61,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const user = userData ?? null
 
     useEffect(() => {
-        // Check if we just returned from OAuth (server redirected with ?auth=success)
         const params = new URLSearchParams(window.location.search)
         const authSuccess = params.get('auth')
 
@@ -71,7 +70,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             url.searchParams.delete('auth')
             window.history.replaceState({}, document.title, url.toString())
 
-            // Invalidate and refetch the auth query to get fresh user data
             queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
         }
     }, [queryClient])

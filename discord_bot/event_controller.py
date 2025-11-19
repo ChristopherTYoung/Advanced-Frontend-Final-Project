@@ -18,7 +18,11 @@ async def api_create_guild_event(guild_id: str, payload: EventCreateRequest, req
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
 
-    user_guilds = await auth_service.get_user_guilds(access_token)
+    # Don't know if I love this, but ok
+    try:
+        user_guilds = await auth_service.get_user_guilds(access_token)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required; please sign in again")
     user_guild_ids = {g["id"] for g in user_guilds}
     if guild_id not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
@@ -49,7 +53,10 @@ async def api_get_guild_events(guild_id: str, request: Request, limit: int = 50)
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
 
-    user_guilds = await auth_service.get_user_guilds(access_token)
+    try:
+        user_guilds = await auth_service.get_user_guilds(access_token)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required; please sign in again")
     user_guild_ids = {g["id"] for g in user_guilds}
     if guild_id not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
@@ -71,7 +78,10 @@ async def api_create_proposal(guild_id: str, payload: ProposalCreateRequest, req
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
 
-    user_guilds = await auth_service.get_user_guilds(access_token)
+    try:
+        user_guilds = await auth_service.get_user_guilds(access_token)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required; please sign in again")
     user_guild_ids = {g["id"] for g in user_guilds}
     if guild_id not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
@@ -116,7 +126,10 @@ async def api_list_proposals(guild_id: str, request: Request, limit: int = 100):
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
 
-    user_guilds = await auth_service.get_user_guilds(access_token)
+    try:
+        user_guilds = await auth_service.get_user_guilds(access_token)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required; please sign in again")
     if not _user_is_admin(user_guilds, guild_id):
         raise HTTPException(status_code=403, detail="Admin permissions required to view proposals")
 
@@ -134,7 +147,10 @@ async def api_approve_proposal(guild_id: str, proposal_id: int, request: Request
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
 
-    user_guilds = await auth_service.get_user_guilds(access_token)
+    try:
+        user_guilds = await auth_service.get_user_guilds(access_token)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required; please sign in again")
     if not _user_is_admin(user_guilds, guild_id):
         raise HTTPException(status_code=403, detail="Admin permissions required to approve proposals")
 
@@ -155,7 +171,10 @@ async def api_reject_proposal(guild_id: str, proposal_id: int, request: Request)
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
 
-    user_guilds = await auth_service.get_user_guilds(access_token)
+    try:
+        user_guilds = await auth_service.get_user_guilds(access_token)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required; please sign in again")
     if not _user_is_admin(user_guilds, guild_id):
         raise HTTPException(status_code=403, detail="Admin permissions required to reject proposals")
 
