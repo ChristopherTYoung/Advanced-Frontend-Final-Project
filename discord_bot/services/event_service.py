@@ -1,4 +1,6 @@
 """Event Service - manages event storage and retrieval."""
+
+import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 import asyncpg
@@ -10,19 +12,19 @@ class EventService:
     async def init_db_pool(self, database_url: str):
         try:
             self.db_pool = await asyncpg.create_pool(database_url, min_size=1, max_size=5)
-            print("DEBUG EventService: Database pool initialized")
+            logging.info("DEBUG EventService: Database pool initialized")
         except Exception as e:
-            print(f"ERROR EventService: Failed to initialize database pool: {e}")
+            logging.error(f"ERROR EventService: Failed to initialize database pool: {e}")
             import traceback; traceback.print_exc()
 
     async def close_db_pool(self):
         if self.db_pool:
             await self.db_pool.close()
-            print("DEBUG EventService: Database pool closed")
+            logging.info("DEBUG EventService: Database pool closed")
 
     async def create_event(self, guild_id: str, user_id: str, time_of_event: datetime, event_name: str, event_details: str) -> Optional[int]:
         if not self.db_pool:
-            print("WARNING EventService: Database pool not initialized")
+            logging.info("WARNING EventService: Database pool not initialized")
             return None
         try:
             if time_of_event.tzinfo is not None:
@@ -45,13 +47,13 @@ class EventService:
                 )
                 return int(row["event_id"]) if row else None
         except Exception as e:
-            print(f"ERROR EventService: Failed to create event: {e}")
+            logging.error(f"ERROR EventService: Failed to create event: {e}")
             import traceback; traceback.print_exc()
             return None
 
     async def list_events(self, guild_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         if not self.db_pool:
-            print("WARNING EventService: Database pool not initialized")
+            logging.info("WARNING EventService: Database pool not initialized")
             return []
         try:
             async with self.db_pool.acquire() as conn:
@@ -73,13 +75,13 @@ class EventService:
                     })
                 return events
         except Exception as e:
-            print(f"ERROR EventService: Failed to list events: {e}")
+            logging.error(f"ERROR EventService: Failed to list events: {e}")
             import traceback; traceback.print_exc()
             return []
 
     async def get_due_events(self, up_to: datetime) -> List[Dict[str, Any]]:
         if not self.db_pool:
-            print("WARNING EventService: Database pool not initialized")
+            logging.info("WARNING EventService: Database pool not initialized")
             return []
 
         if up_to.tzinfo is not None:
@@ -103,27 +105,27 @@ class EventService:
                     })
                 return events
         except Exception as e:
-            print(f"ERROR EventService: Failed to get due events: {e}")
+            logging.error(f"ERROR EventService: Failed to get due events: {e}")
             import traceback; traceback.print_exc()
             return []
 
     async def delete_event(self, event_id: int) -> bool:
         if not self.db_pool:
-            print("WARNING EventService: Database pool not initialized")
+            logging.info("WARNING EventService: Database pool not initialized")
             return False
         try:
             async with self.db_pool.acquire() as conn:
                 await conn.execute("DELETE FROM event WHERE event_id = $1", event_id)
                 return True
         except Exception as e:
-            print(f"ERROR EventService: Failed to delete event {event_id}: {e}")
+            logging.error(f"ERROR EventService: Failed to delete event {event_id}: {e}")
             import traceback; traceback.print_exc()
             return False
 
     async def cancel_event(self, event_id: int, canceled_by: Optional[str] = None) -> bool:
         """Mark an event as canceled by setting the canceled timestamp. Returns True if updated."""
         if not self.db_pool:
-            print("WARNING EventService: Database pool not initialized")
+            logging.info("WARNING EventService: Database pool not initialized")
             return False
         try:
             async with self.db_pool.acquire() as conn:
@@ -131,7 +133,6 @@ class EventService:
                     "UPDATE event SET canceled = NOW() WHERE event_id = $1",
                     event_id,
                 )
-                # asyncpg returns command tag like 'UPDATE <n>' where <n> is number of rows
                 try:
                     parts = result.split()
                     if len(parts) >= 2:
@@ -141,14 +142,14 @@ class EventService:
                     pass
                 return False
         except Exception as e:
-            print(f"ERROR EventService: Failed to cancel event {event_id}: {e}")
+            logging.error(f"ERROR EventService: Failed to cancel event {event_id}: {e}")
             import traceback; traceback.print_exc()
             return False
 
     # --- Proposal methods ---
     async def create_proposal(self, guild_id: str, user_id: str, time_of_event: datetime, event_name: str, event_details: str) -> Optional[int]:
         if not self.db_pool:
-            print("WARNING EventService: Database pool not initialized")
+            logging.info("WARNING EventService: Database pool not initialized")
             return None
         try:
             if time_of_event.tzinfo is not None:
@@ -171,13 +172,13 @@ class EventService:
                 )
                 return int(row["proposal_id"]) if row else None
         except Exception as e:
-            print(f"ERROR EventService: Failed to create proposal: {e}")
+            logging.error(f"ERROR EventService: Failed to create proposal: {e}")
             import traceback; traceback.print_exc()
             return None
 
     async def list_proposals(self, guild_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         if not self.db_pool:
-            print("WARNING EventService: Database pool not initialized")
+            logging.info("WARNING EventService: Database pool not initialized")
             return []
         try:
             async with self.db_pool.acquire() as conn:
@@ -202,13 +203,13 @@ class EventService:
                     })
                 return proposals
         except Exception as e:
-            print(f"ERROR EventService: Failed to list proposals: {e}")
+            logging.error(f"ERROR EventService: Failed to list proposals: {e}")
             import traceback; traceback.print_exc()
             return []
 
     async def get_proposal(self, proposal_id: int) -> Optional[Dict[str, Any]]:
         if not self.db_pool:
-            print("WARNING EventService: Database pool not initialized")
+            logging.info("WARNING EventService: Database pool not initialized")
             return None
         try:
             async with self.db_pool.acquire() as conn:
@@ -231,7 +232,7 @@ class EventService:
                     "event_id": int(row["event_id"]) if row["event_id"] else None,
                 }
         except Exception as e:
-            print(f"ERROR EventService: Failed to fetch proposal {proposal_id}: {e}")
+            logging.error(f"ERROR EventService: Failed to fetch proposal {proposal_id}: {e}")
             import traceback; traceback.print_exc()
             return None
 
@@ -263,20 +264,20 @@ class EventService:
 
             return event_id
         except Exception as e:
-            print(f"ERROR EventService: Failed to approve proposal {proposal_id}: {e}")
+            logging.error(f"ERROR EventService: Failed to approve proposal {proposal_id}: {e}")
             import traceback; traceback.print_exc()
             return None
 
     async def delete_proposal(self, proposal_id: int) -> bool:
         if not self.db_pool:
-            print("WARNING EventService: Database pool not initialized")
+            logging.info("WARNING EventService: Database pool not initialized")
             return False
         try:
             async with self.db_pool.acquire() as conn:
                 await conn.execute("DELETE FROM event_proposal WHERE proposal_id = $1", proposal_id)
                 return True
         except Exception as e:
-            print(f"ERROR EventService: Failed to delete proposal {proposal_id}: {e}")
+            logging.error(f"ERROR EventService: Failed to delete proposal {proposal_id}: {e}")
             import traceback; traceback.print_exc()
             return False
 
