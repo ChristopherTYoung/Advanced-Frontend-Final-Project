@@ -69,7 +69,6 @@ async def api_get_guild_events(guild_id: str, request: Request, limit: int = 50)
 
 @router.post("/api/guilds/{guild_id}/proposals")
 async def api_create_proposal(guild_id: str, payload: ProposalCreateRequest, request: Request):
-    # Any authenticated user who is a member of the guild may propose an event
     user = request.session.get("user")
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -86,7 +85,6 @@ async def api_create_proposal(guild_id: str, payload: ProposalCreateRequest, req
     if guild_id not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
-    # Create proposal
     proposal_id = await event_service.create_proposal(
         guild_id=guild_id,
         user_id=payload.user_id,
@@ -102,7 +100,6 @@ async def api_create_proposal(guild_id: str, payload: ProposalCreateRequest, req
 
 
 def _user_is_admin(user_guilds: list, guild_id: str) -> bool:
-    # Determine if user is guild owner or has MANAGE_GUILD permission (0x20)
     for g in user_guilds:
         if str(g.get("id")) == str(guild_id):
             if g.get("owner"):
