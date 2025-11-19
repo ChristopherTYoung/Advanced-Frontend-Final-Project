@@ -108,3 +108,47 @@ async def api_delete_guild_settings(guild_id: str, request: Request):
         })
     else:
         raise HTTPException(status_code=500, detail="Failed to delete settings")
+
+
+@router.get("/api/guilds/{guild_id}/roles")
+async def api_get_guild_roles(guild_id: str, request: Request):
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    access_token = request.session.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated - no access token")
+
+    try:
+        user_guilds = await auth_service.get_user_guilds(access_token)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required; please sign in again")
+
+    user_guild_ids = {g["id"] for g in user_guilds}
+    if guild_id not in user_guild_ids:
+        raise HTTPException(status_code=403, detail="You don't have access to this guild")
+
+    if not bot_service.is_ready():
+        raise HTTPException(status_code=503, detail="Bot is not ready")
+
+    guild = bot_service.get_guild_by_id(int(guild_id))
+    if not guild:
+        raise HTTPException(status_code=404, detail="Guild not found or bot not in guild")
+
+    roles_list = []
+    try:
+        for role in guild.roles:
+            roles_list.append({
+                "id": str(role.id),
+                "name": role.name,
+                "mentionable": bool(getattr(role, "mentionable", False)),
+                "hoist": bool(getattr(role, "hoist", False)),
+                "managed": bool(getattr(role, "managed", False)),
+                "position": int(getattr(role, "position", 0)),
+            })
+    except Exception as e:
+        print(f"ERROR fetching roles for guild {guild_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch guild roles")
+
+    return JSONResponse({"roles": roles_list})
