@@ -16,8 +16,6 @@ export default function SettingsTab() {
   const [errorMessage, setErrorMessage] = useState('')
 
   const { data: guilds, isLoading: guildsLoading } = useGuilds()
-  console.log('DEBUG: guilds data:', guilds)
-  console.log('DEBUG: selectedGuildId:', selectedGuildId)
   const { data: settings, isLoading: settingsLoading } = useGuildSettings(selectedGuildId)
   const { data: guildRoles } = useGuildRoles(selectedGuildId)
   const updateSettings = useUpdateGuildSettings()
@@ -77,15 +75,12 @@ export default function SettingsTab() {
   ]
 
   const selectedGuildEntry = guilds?.find((g: any) => g.id === selectedGuildId)
-  console.log('DEBUG: selectedGuildEntry FULL:', JSON.stringify(selectedGuildEntry, null, 2))
-  console.log('DEBUG: owner value:', selectedGuildEntry?.owner, 'type:', typeof selectedGuildEntry?.owner)
   let isGuildOwner = false
   if (selectedGuildEntry) {
     if (selectedGuildEntry.owner) {
       isGuildOwner = true
     }
   }
-  console.log('DEBUG: isGuildOwner:', isGuildOwner)
 
   function addSelectedRole() {
     if (!selectedRoleToAdd) return

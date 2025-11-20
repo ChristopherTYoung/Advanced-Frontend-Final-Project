@@ -71,11 +71,8 @@ async function fetchGuilds(): Promise<Guild[]> {
     throw new Error('Failed to fetch guilds')
   }
   const data = await response.json()
-  console.log('DEBUG fetchGuilds: raw data from API:', data)
   const guildsArray = data.guilds || []
-  console.log('DEBUG fetchGuilds: guildsArray before parsing:', guildsArray)
   const parsed = z.array(GuildSchema).parse(guildsArray)
-  console.log('DEBUG fetchGuilds: parsed guilds:', parsed)
   return parsed
 }
 
