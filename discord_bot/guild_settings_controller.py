@@ -22,9 +22,9 @@ async def api_get_guild_settings(guild_id: str, request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
 
     user_guilds = await auth_service.get_user_guilds(access_token)
-    user_guild_ids = {g["id"] for g in user_guilds}
+    user_guild_ids = {str(g.get("id")) for g in user_guilds}
     
-    if guild_id not in user_guild_ids:
+    if str(guild_id) not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
     settings = await settings_service.get_settings(guild_id)
@@ -51,9 +51,9 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
 
     user_guilds = await auth_service.get_user_guilds(access_token)
-    user_guild_ids = {g["id"] for g in user_guilds}
+    user_guild_ids = {str(g.get("id")) for g in user_guilds}
     
-    if guild_id not in user_guild_ids:
+    if str(guild_id) not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
     if not settings_service:
@@ -72,6 +72,23 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
     settings_dict = payload.settings.model_dump(exclude_none=True)
     bot_settings = settings_dict.get("bot_settings", {})
     new_nickname = bot_settings.get("bot_nickname")
+
+    if "role_settings" in settings_dict and settings_dict.get("role_settings") is not None:
+        guild_entry = next((g for g in user_guilds if str(g.get("id")) == str(guild_id)), None)
+        is_guild_owner = False
+        if guild_entry:
+            print(f"DEBUG: guild_entry for {guild_id}: {guild_entry}")
+            owner_value = guild_entry.get("owner")
+            print(f"DEBUG: owner value: {owner_value}, type: {type(owner_value)}")
+            if guild_entry.get("owner"):
+                is_guild_owner = True
+        else:
+            print(f"DEBUG: No guild_entry found for guild_id {guild_id}")
+            print(f"DEBUG: Available guild IDs: {[str(g.get('id')) for g in user_guilds]}")
+
+        if not is_guild_owner:
+            print(f"DEBUG: Blocked role_settings update for guild {guild_id}. is_guild_owner={is_guild_owner}")
+            raise HTTPException(status_code=403, detail="Only the guild owner may modify role settings")
 
     success = await settings_service.update_settings(guild_id, settings_dict)
     
@@ -100,9 +117,9 @@ async def api_delete_guild_settings(guild_id: str, request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated - no access token")
 
     user_guilds = await auth_service.get_user_guilds(access_token)
-    user_guild_ids = {g["id"] for g in user_guilds}
+    user_guild_ids = {str(g.get("id")) for g in user_guilds}
     
-    if guild_id not in user_guild_ids:
+    if str(guild_id) not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
     success = await settings_service.delete_settings(guild_id)
@@ -134,8 +151,8 @@ async def api_get_guild_roles(guild_id: str, request: Request):
     except HTTPException:
         raise HTTPException(status_code=401, detail="Authentication required; please sign in again")
 
-    user_guild_ids = {g["id"] for g in user_guilds}
-    if guild_id not in user_guild_ids:
+    user_guild_ids = {str(g.get("id")) for g in user_guilds}
+    if str(guild_id) not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
     if not bot_service.is_ready():

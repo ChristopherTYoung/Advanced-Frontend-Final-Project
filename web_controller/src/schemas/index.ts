@@ -15,7 +15,7 @@ export const GuildSchema = z.object({
   name: z.string(),
   icon: z.string().nullable(),
   owner: z.boolean().optional(),
-  permissions: z.string().optional(),
+  permissions: z.union([z.string(), z.number()]).optional(),
 })
 
 export type Guild = z.infer<typeof GuildSchema>
@@ -43,24 +43,7 @@ export const MessageSchema = z.object({
 
 export type Message = z.infer<typeof MessageSchema>
 
-export const GuildSettingsSchema = z.object({
-  guild_id: z.string(),
-  settings: z.object({
-    personality: z.string().optional(),
-    bot_nickname: z.string().max(32).optional(),
-    // roles is a list of role entries stored in separate role_settings JSON
-    roles: z.array(z.object({
-      role_name: z.string(),
-      permissions: z.array(z.object({
-        permission_name: z.string(),
-        allowed: z.boolean(),
-      }))
-    })).optional(),
-  }),
-  edited_at: z.string().nullable(),
-})
 
-export type GuildSettings = z.infer<typeof GuildSettingsSchema>
 
 export const SendMessageRequestSchema = z.object({
   guild_id: z.string(),
@@ -69,15 +52,6 @@ export const SendMessageRequestSchema = z.object({
 })
 
 export type SendMessageRequest = z.infer<typeof SendMessageRequestSchema>
-
-export const UpdateGuildSettingsRequestSchema = z.object({
-  settings: z.object({
-    personality: z.string().optional(),
-    bot_nickname: z.string().max(32).optional(),
-  }),
-})
-
-export type UpdateGuildSettingsRequest = z.infer<typeof UpdateGuildSettingsRequestSchema>
 
 export const ApiErrorSchema = z.object({
   error: z.string(),
@@ -173,6 +147,7 @@ export const PermissionSchema = z.object({
 export type Permission = z.infer<typeof PermissionSchema>
 
 export const RoleSchema = z.object({
+  role_id: z.string().optional(),
   role_name: z.string(),
   permissions: z.array(PermissionSchema),
 })
@@ -191,3 +166,23 @@ export const RoleSettingsSchema = z.object({
 })
 
 export type RoleSettings = z.infer<typeof RoleSettingsSchema>
+
+export const GuildSettingsSchema = z.object({
+  guild_id: z.string(),
+  settings: z.object({
+    bot_settings: BotSettingsSchema.optional(),
+    role_settings: RoleSettingsSchema.optional(),
+  }),
+  edited_at: z.string().nullable(),
+})
+
+export type GuildSettings = z.infer<typeof GuildSettingsSchema>
+
+export const UpdateGuildSettingsRequestSchema = z.object({
+  settings: z.object({
+    bot_settings: BotSettingsSchema.optional(),
+    role_settings: RoleSettingsSchema.optional(),
+  }),
+})
+
+export type UpdateGuildSettingsRequest = z.infer<typeof UpdateGuildSettingsRequestSchema>

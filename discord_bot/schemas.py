@@ -99,6 +99,7 @@ class Permission(BaseModel):
 
 
 class Role(BaseModel):
+    role_id: Optional[str] = None
     role_name: str
     permissions: list[Permission]
 

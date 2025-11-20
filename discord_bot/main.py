@@ -170,10 +170,20 @@ async def api_guilds(request: Request):
     bot_guild_ids = {g["id"] for g in bot_guilds}
 
     available_guilds = [
-        {"id": guild["id"], "name": guild["name"], "icon": guild.get("icon")}
+        {
+            "id": guild["id"], 
+            "name": guild["name"], 
+            "icon": guild.get("icon"),
+            "owner": guild.get("owner", False),
+            "permissions": guild.get("permissions")
+        }
         for guild in user_guilds
         if guild["id"] in bot_guild_ids
     ]
+    
+    print(f"DEBUG /api/guilds: Returning {len(available_guilds)} guilds")
+    for g in available_guilds:
+        print(f"  - {g['name']} (owner={g.get('owner')})")
 
     return JSONResponse({"guilds": available_guilds})
 

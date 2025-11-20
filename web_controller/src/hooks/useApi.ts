@@ -20,6 +20,7 @@ import {
   type EventCreateRequest,
   type Proposal,
 } from '../schemas'
+import type { BotSettings, RoleSettings } from '../schemas'
 
 type EventProposal = {
   proposal_id: number;
@@ -70,8 +71,12 @@ async function fetchGuilds(): Promise<Guild[]> {
     throw new Error('Failed to fetch guilds')
   }
   const data = await response.json()
+  console.log('DEBUG fetchGuilds: raw data from API:', data)
   const guildsArray = data.guilds || []
-  return z.array(GuildSchema).parse(guildsArray)
+  console.log('DEBUG fetchGuilds: guildsArray before parsing:', guildsArray)
+  const parsed = z.array(GuildSchema).parse(guildsArray)
+  console.log('DEBUG fetchGuilds: parsed guilds:', parsed)
+  return parsed
 }
 
 async function fetchChannels(guildId: string): Promise<Channel[]> {
@@ -172,8 +177,7 @@ async function fetchGuildSettings(guildId: string): Promise<GuildSettings> {
   return GuildSettingsSchema.parse(data)
 }
 
-async function updateGuildSettings(guildId: string, settings: { personality?: string, bot_nickname?: string }) {
-  // Validate request data
+async function updateGuildSettings(guildId: string, settings: { bot_settings?: BotSettings, role_settings?: RoleSettings } | Record<string, any>) {
   const validated = UpdateGuildSettingsRequestSchema.parse({ settings })
 
   const response = await fetch(api(`/api/guilds/${guildId}/settings`), {
@@ -187,6 +191,25 @@ async function updateGuildSettings(guildId: string, settings: { personality?: st
     throw new Error(data.error || 'Failed to update settings')
   }
   return data
+}
+
+async function fetchGuildRoles(guildId: string) {
+  const response = await fetch(api(`/api/guilds/${guildId}/roles`), {
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch guild roles')
+  }
+  const data = await response.json()
+  return data.roles || []
+}
+
+export function useGuildRoles(guildId: string | null, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['guildRoles', guildId],
+    queryFn: () => fetchGuildRoles(guildId!),
+    enabled: enabled && !!guildId,
+  })
 }
 
 // Hooks
@@ -349,7 +372,7 @@ export function useUpdateGuildSettings() {
   const queryClient = useQueryClient()
   
   return useMutation({
-    mutationFn: ({ guildId, settings }: { guildId: string, settings: { personality?: string, bot_nickname?: string } }) => 
+    mutationFn: ({ guildId, settings }: { guildId: string, settings: { bot_settings?: BotSettings, role_settings?: RoleSettings } }) => 
       updateGuildSettings(guildId, settings),
     onSuccess: (_, variables) => {
       // Invalidate guild settings query to refetch
