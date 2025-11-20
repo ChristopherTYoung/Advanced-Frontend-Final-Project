@@ -156,6 +156,8 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ##### Rubric Items:
 
 ##### Features
+- Role permissions for bot
+- Role/User management view
 
 ### Nov 22
 #### Estimates
