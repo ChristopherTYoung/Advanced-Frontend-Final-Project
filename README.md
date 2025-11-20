@@ -147,7 +147,7 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ### Nov 19
 #### Estimates
 ##### Rubric Items:
-- deploy new features added to kubernetes
+
 ##### Features:
 - Role permissions for bot
 - Role/User management view
@@ -160,6 +160,7 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ### Nov 22
 #### Estimates
 ##### Rubric Items:
+- deploy new features added to kubernetes
 
 ##### Features:
 - Have AI review image content
