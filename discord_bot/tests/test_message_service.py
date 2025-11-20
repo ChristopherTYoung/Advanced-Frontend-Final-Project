@@ -199,21 +199,15 @@ class TestMessageService:
 
 
 class TestMessageServiceIntegration:
-    """Integration tests for MessageService with realistic scenarios."""
-
     @pytest.fixture
     def service(self):
-        """Create a fresh MessageService instance for each test."""
         return MessageService()
 
     def test_conversation_flow(self, service):
-        """Test a realistic conversation flow."""
-        # User sends DM
         service.add_to_history(
             message_type="dm", content="Hello bot!", user_id="user_123", username="alice", message_id="msg_1"
         )
 
-        # Bot sends response
         service.add_to_history(
             message_type="sent",
             content="Hi alice! How can I help?",
@@ -222,23 +216,19 @@ class TestMessageServiceIntegration:
             message_id="msg_2",
         )
 
-        # User sends another DM
         service.add_to_history(
             message_type="dm", content="Tell me a joke", user_id="user_123", username="alice", message_id="msg_3"
         )
 
-        # Verify conversation history
         all_messages = service.get_history()
         assert len(all_messages) == 3
 
-        # Verify DM messages only
         dm_messages = service.get_dm_messages()
         assert len(dm_messages) == 2
         assert dm_messages[0]["content"] == "Tell me a joke"
         assert dm_messages[1]["content"] == "Hello bot!"
 
     def test_multi_user_server_messages(self, service):
-        """Test messages from multiple users in a server."""
         users = [("user_1", "alice"), ("user_2", "bob"), ("user_3", "charlie")]
 
         for user_id, username in users:
@@ -253,11 +243,9 @@ class TestMessageServiceIntegration:
                 channel_name="general",
             )
 
-        # Get all server messages
         server_messages = service.get_history(message_type="received")
         assert len(server_messages) == 3
 
-        # Get messages from specific user
         alice_messages = service.get_history(user_id="user_1")
         assert len(alice_messages) == 1
         assert alice_messages[0]["username"] == "alice"

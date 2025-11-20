@@ -6,8 +6,6 @@ from fastapi import HTTPException
 
 
 class AuthService:
-    """Service for managing Discord OAuth authentication."""
-
     def __init__(self):
         self.client_id = os.environ.get("VITE_DISCORD_CLIENT_ID")
         self.client_secret = os.environ.get("VITE_DISCORD_CLIENT_SECRET")
@@ -107,5 +105,4 @@ class AuthService:
         else:
             return f"{self.frontend_origin}/?auth=error"
 
-# Singleton instance
 auth_service = AuthService()

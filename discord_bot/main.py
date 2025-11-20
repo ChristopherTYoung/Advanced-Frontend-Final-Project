@@ -19,8 +19,12 @@ from services.llm_tools import tool_send_message
 from schemas import (
     SendMessageRequest
 )
+from event_controller import router as event_router
+from guild_settings_controller import router as guild_settings_router
 
 app = FastAPI()
+app.include_router(event_router)
+app.include_router(guild_settings_router)
 
 SESSION_SECRET = os.environ.get("DISCORD_SESSION_SECRET", "dev-secret-change-me")
 FRONTEND_ORIGINS = os.environ.get("FRONTEND_ORIGINS", "http://localhost:5173")
@@ -30,8 +34,6 @@ DATABASE_URL = os.environ.get("DB_CONNECTION_STRING")
 
 bot_service.message_service = message_service
 bot_service.settings_service = settings_service
-print(f"DEBUG: Services connected")
-
 
 @app.on_event("startup")
 async def startup_event():
@@ -39,83 +41,57 @@ async def startup_event():
     await message_service.init_db_pool(DATABASE_URL)
     await settings_service.init_db_pool(DATABASE_URL)
     await event_service.init_db_pool(DATABASE_URL)
-    print(f"DEBUG: Bot service has message_service: {bot_service.message_service is not None}")
     await bot_service.start()
-    # Start background event checker
     async def _event_checker_loop():
         print("DEBUG: Event checker background task started")
         while True:
-            try:
-                # Use UTC naive datetimes (DB stores TIMESTAMP without tz)
-                now = datetime.utcnow()
-                due_events = await event_service.get_due_events(now)
-                if due_events:
-                    print(f"DEBUG: Found {len(due_events)} due event(s)")
+            now = datetime.utcnow()
+            due_events = await event_service.get_due_events(now)
+            if due_events:
+                print(f"DEBUG: Found {len(due_events)} due event(s)")
 
-                for ev in due_events:
+            for ev in due_events:
+                guild_obj = bot_service.get_guild_by_id(int(ev['guild_id']))
+                if not guild_obj:
+                    print(f"WARNING: Guild {ev['guild_id']} not found by bot")
+                    continue
+
+                target_channel_id = None
+                for channel in guild_obj.text_channels:
+                    if channel.permissions_for(guild_obj.me).send_messages:
+                        target_channel_id = str(channel.id)
+                        break
+
+                    if not target_channel_id:
+                        print(f"WARNING: No suitable channel to send notification in guild {ev['guild_id']}")
+                        continue
+
                     try:
-                        guild_obj = bot_service.get_guild_by_id(int(ev['guild_id']))
-                        if not guild_obj:
-                            print(f"WARNING: Guild {ev['guild_id']} not found by bot")
-                            continue
+                        personality = await bot_service._get_personality(ev['guild_id'])
+                    except Exception:
+                        personality = None
 
-                        target_channel_id = None
-                        for channel in guild_obj.text_channels:
-                            if channel.permissions_for(guild_obj.me).send_messages:
-                                target_channel_id = str(channel.id)
-                                break
+                    system_prompt = llm_service.build_system_prompt(personality=personality, use_tools=True)
 
-                        if not target_channel_id:
-                            print(f"WARNING: No suitable channel to send notification in guild {ev['guild_id']}")
-                            continue
+                    user_prompt = (
+                        f"Create an @everyone announcement for the event '{ev['event_name']}' happening now. "
+                        f"Event time: {ev['time_of_event']}. Details: {ev['event_details']}. "
+                        f"Target guild_id: '{ev['guild_id']}', channel_id: '{target_channel_id}'."
+                    )
 
-                        try:
-                            personality = await bot_service._get_personality(ev['guild_id'])
-                        except Exception:
-                            personality = None
+                    resp = await llm_service.generate_response(
+                        user_message=user_prompt,
+                        system_prompt=system_prompt,
+                        use_tools=True,
+                    )
 
-                        system_prompt = llm_service.build_system_prompt(personality=personality, use_tools=True)
+                    if resp:
+                            await tool_send_message(bot_service, ev['guild_id'], target_channel_id, resp)
+                    else:
+                        deleted = await event_service.delete_event(ev['event_id'])
 
-                        user_prompt = (
-                            f"Create an @everyone announcement for the event '{ev['event_name']}' happening now. "
-                            f"Event time: {ev['time_of_event']}. Details: {ev['event_details']}. "
-                            f"Target guild_id: '{ev['guild_id']}', channel_id: '{target_channel_id}'."
-                        )
-
-                        resp = await llm_service.generate_response(
-                            user_message=user_prompt,
-                            system_prompt=system_prompt,
-                            use_tools=True,
-                        )
-
-                        if resp:
-                            try:
-                                await tool_send_message(bot_service, ev['guild_id'], target_channel_id, resp)
-                                print(f"DEBUG: Sent free-form LLM announcement for event {ev['event_id']}")
-                            except Exception as e:
-                                print(f"ERROR sending free-form LLM announcement for event {ev['event_id']}: {e}")
-                                import traceback; traceback.print_exc()
-                        else:
-                            print(f"DEBUG: LLM executed tool calls or returned no plain text for event {ev['event_id']}")
-                    except Exception as e:
-                        print(f"ERROR preparing/sending announcement for event {ev.get('event_id')}: {e}")
-                        import traceback; traceback.print_exc()
-                    finally:
-                        try:
-                            deleted = await event_service.delete_event(ev['event_id'])
-                            if deleted:
-                                print(f"DEBUG: Deleted event {ev['event_id']} after processing")
-                        except Exception as e:
-                            print(f"ERROR deleting event {ev.get('event_id')}: {e}")
-
-            except Exception as e:
-                print(f"ERROR in event checker loop: {e}")
-                import traceback; traceback.print_exc()
-
-            # Wait 60 seconds between checks
             await asyncio.sleep(60)
 
-    # Schedule the background checker task
     app.state.event_checker_task = asyncio.create_task(_event_checker_loop())
 
 
@@ -125,7 +101,6 @@ async def shutdown_event():
     await message_service.close_db_pool()
     await settings_service.close_db_pool()
     await event_service.close_db_pool()
-    # Cancel background event checker if running
     task = getattr(app.state, 'event_checker_task', None)
     if task and not task.done():
         task.cancel()
@@ -146,27 +121,13 @@ app.add_middleware(
     https_only=DISCORD_SESSION_HTTPS_ONLY,
 )
 
-# Include event routes from controller
-from event_controller import router as event_router
-app.include_router(event_router)
-# Include guild settings routes
-from guild_settings_controller import router as guild_settings_router
-app.include_router(guild_settings_router)
-
-@app.get("/")
-async def read_root():
-    """Health check endpoint."""
-    return {"hello": "world"}
-
 @app.get("/api/auth/login")
 async def auth_login():
-    """Redirect to Discord OAuth authorization page."""
     auth_url = auth_service.get_authorization_url()
     return RedirectResponse(url=auth_url)
 
 @app.get("/api/auth/callback")
 async def auth_callback(code: Optional[str] = None, request: Request = None):
-    """Handle OAuth callback from Discord."""
     if not code:
         raise HTTPException(status_code=400, detail="No authorization code provided")
 
@@ -182,7 +143,6 @@ async def auth_callback(code: Optional[str] = None, request: Request = None):
 
 @app.get("/api/me")
 async def api_me(request: Request):
-    """Get current user information from session."""
     user = request.session.get("user")
     if not user:
         return JSONResponse({"user": None})
@@ -190,22 +150,17 @@ async def api_me(request: Request):
 
 @app.post("/api/logout")
 async def api_logout(request: Request):
-    """Clear user session."""
     request.session.pop("user", None)
     request.session.pop("access_token", None)
     return JSONResponse({"ok": True})
 
 @app.get("/api/guilds")
 async def api_guilds(request: Request):
-    """Get guilds where the user is a member and the bot is also installed."""
     access_token = request.session.get("access_token")
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated - no access token in session")
 
     user_guilds = await auth_service.get_user_guilds(access_token)
-
-    print(f"DEBUG: User has {len(user_guilds)} guilds")
-    print(f"DEBUG: User guild IDs: {[g['id'] for g in user_guilds]}")
 
     if not bot_service.is_ready():
         print("DEBUG: Bot is not ready, returning empty list")
@@ -214,16 +169,11 @@ async def api_guilds(request: Request):
     bot_guilds = bot_service.get_guilds()
     bot_guild_ids = {g["id"] for g in bot_guilds}
 
-    print(f"DEBUG: Bot is in {len(bot_guilds)} guilds")
-    print(f"DEBUG: Bot guild IDs: {bot_guild_ids}")
-
     available_guilds = [
         {"id": guild["id"], "name": guild["name"], "icon": guild.get("icon")}
         for guild in user_guilds
         if guild["id"] in bot_guild_ids
     ]
-
-    print(f"DEBUG: Found {len(available_guilds)} matching guilds")
 
     return JSONResponse({"guilds": available_guilds})
 
@@ -283,7 +233,6 @@ async def _send_message_internal(guild_id: str, channel_id: str, message: Option
     if not bot_service.is_ready():
         raise ValueError("Bot is not ready")
 
-    # If instructions provided, generate content using LLM
     final_message = message
     if not final_message and not instructions:
         raise ValueError("Either message or instructions must be provided")
@@ -304,7 +253,6 @@ async def _send_message_internal(guild_id: str, channel_id: str, message: Option
     if not final_message:
         raise ValueError("No message content to send")
 
-    # Send via bot_service
     return await bot_service.send_message(int(channel_id), final_message, user_id=(user.get("id") if user else None), username=(user.get("username") if user else None))
 
 
@@ -353,6 +301,5 @@ async def api_get_dm_messages(request: Request, limit: int = 50):
     limit = min(limit, 100)
 
     messages = await message_service.get_dm_messages(limit=limit)
-    print(f"DEBUG: Returning {len(messages)} DM messages")
 
     return JSONResponse({"messages": messages})

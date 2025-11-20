@@ -180,12 +180,6 @@ class LLMService:
         except httpx.TimeoutException:
             print("ERROR: LLM request timed out")
             return None
-        except Exception as e:
-            print(f"ERROR calling LLM: {e}")
-            import traceback
-
-            traceback.print_exc()
-            return None
 
     async def generate_discord_response(
         self, 
@@ -252,5 +246,4 @@ class LLMService:
                 + personality_text
             )
 
-# Singleton instance
 llm_service = LLMService()

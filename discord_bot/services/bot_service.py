@@ -324,24 +324,19 @@ class BotService:
         if self.bot_token:
             print(f"DEBUG: Token preview: {self.bot_token[:20]}...")
             print(f"DEBUG: Starting Discord bot...")
-            try:
-                self.bot_task = asyncio.create_task(self.bot.start(self.bot_token))
-                print(f"DEBUG: Bot task created successfully")
+            self.bot_task = asyncio.create_task(self.bot.start(self.bot_token))
+            print(f"DEBUG: Bot task created successfully")
 
-                def task_done_callback(task):
-                    if task.exception():
-                        print(f"ERROR: Bot task failed with exception: {task.exception()}")
-                        import traceback
-
-                        traceback.print_exception(
-                            type(task.exception()), task.exception(), task.exception().__traceback__
-                        )
+            def task_done_callback(task):
+                if task.exception():
+                    print(f"ERROR: Bot task failed with exception: {task.exception()}")
+                    import traceback
+                    
+                    traceback.print_exception(
+                        type(task.exception()), task.exception(), task.exception().__traceback__
+                    )
 
                 self.bot_task.add_done_callback(task_done_callback)
-            except Exception as e:
-                print(f"ERROR starting bot: {e}")
-                import traceback
-                traceback.print_exc()
         else:
             print("Warning: DISCORD_BOT_TOKEN not set, bot will not start")
 

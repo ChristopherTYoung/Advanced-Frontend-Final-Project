@@ -69,11 +69,8 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update settings")
 
-    try:
-        if new_nickname and new_nickname != old_nickname:
-            asyncio.create_task(bot_service.announce_nickname_change(guild_id, old_nickname, new_nickname))
-    except Exception as e:
-        print(f"ERROR scheduling nickname announcement: {e}")
+    if new_nickname and new_nickname != old_nickname:
+        asyncio.create_task(bot_service.announce_nickname_change(guild_id, old_nickname, new_nickname))
 
     return JSONResponse({
         "ok": True,
@@ -139,18 +136,14 @@ async def api_get_guild_roles(guild_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Guild not found or bot not in guild")
 
     roles_list = []
-    try:
-        for role in guild.roles:
-            roles_list.append({
-                "id": str(role.id),
-                "name": role.name,
-                "mentionable": bool(getattr(role, "mentionable", False)),
-                "hoist": bool(getattr(role, "hoist", False)),
-                "managed": bool(getattr(role, "managed", False)),
-                "position": int(getattr(role, "position", 0)),
-            })
-    except Exception as e:
-        print(f"ERROR fetching roles for guild {guild_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch guild roles")
+    for role in guild.roles:
+        roles_list.append({
+            "id": str(role.id),
+            "name": role.name,
+            "mentionable": bool(getattr(role, "mentionable", False)),
+            "hoist": bool(getattr(role, "hoist", False)),
+            "managed": bool(getattr(role, "managed", False)),
+            "position": int(getattr(role, "position", 0)),
+        })
 
     return JSONResponse({"roles": roles_list})
