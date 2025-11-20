@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { useGuilds, useGuildSettings, useUpdateGuildSettings, useGuildRoles } from '../hooks/useApi'
+import { useGuilds, useGuildSettings, useUpdateGuildSettings, useGuildRoles, useUserPermissions } from '../hooks/useApi'
 
 type RoleEntry = {
   role_id?: string;
@@ -18,6 +18,7 @@ export default function SettingsTab() {
   const { data: guilds, isLoading: guildsLoading } = useGuilds()
   const { data: settings, isLoading: settingsLoading } = useGuildSettings(selectedGuildId)
   const { data: guildRoles } = useGuildRoles(selectedGuildId)
+  const { data: userPermissions } = useUserPermissions(selectedGuildId)
   const updateSettings = useUpdateGuildSettings()
 
   useEffect(() => {
@@ -74,13 +75,9 @@ export default function SettingsTab() {
     'manage_proposals',
   ]
 
-  const selectedGuildEntry = guilds?.find((g: any) => g.id === selectedGuildId)
-  let isGuildOwner = false
-  if (selectedGuildEntry) {
-    if (selectedGuildEntry.owner) {
-      isGuildOwner = true
-    }
-  }
+  const isGuildOwner = userPermissions?.is_owner || false
+  const canChangeNickname = userPermissions?.permissions?.change_nickname || false
+  const canChangePersonality = userPermissions?.permissions?.change_personality || false
 
   function addSelectedRole() {
     if (!selectedRoleToAdd) return
@@ -150,8 +147,10 @@ export default function SettingsTab() {
                   onChange={(e) => setNickname(e.target.value)}
                   placeholder="Enter bot nickname (max 32 characters)"
                   maxLength={32}
+                  disabled={!canChangeNickname}
+                  style={{ opacity: canChangeNickname ? 1 : 0.6, cursor: canChangeNickname ? 'text' : 'not-allowed' }}
                 />
-                <small>Leave empty to use default bot username</small>
+                <small>Leave empty to use default bot username {!canChangeNickname && '(You don\'t have permission to change this)'}</small>
               </div>
 
               <div className="form-group">
@@ -162,9 +161,12 @@ export default function SettingsTab() {
                   onChange={(e) => setPersonality(e.target.value)}
                   placeholder="Enter bot personality description..."
                   rows={6}
+                  disabled={!canChangePersonality}
+                  style={{ opacity: canChangePersonality ? 1 : 0.6, cursor: canChangePersonality ? 'text' : 'not-allowed' }}
                 />
                 <small>
                   Example: "You are a friendly and helpful assistant. You love to make jokes and use emojis."
+                  {!canChangePersonality && ' (You don\'t have permission to change this)'}
                 </small>
               </div>
 

@@ -174,3 +174,111 @@ async def api_get_guild_roles(guild_id: str, request: Request):
         })
 
     return JSONResponse({"roles": roles_list})
+
+
+@router.get("/api/guilds/{guild_id}/user/permissions")
+async def api_get_user_permissions(guild_id: str, request: Request):
+    """Get the current user's permissions for a guild based on their roles."""
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    access_token = request.session.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated - no access token")
+
+    try:
+        user_guilds = await auth_service.get_user_guilds(access_token)
+    except HTTPException:
+        raise HTTPException(status_code=401, detail="Authentication required; please sign in again")
+
+    user_guild_ids = {str(g.get("id")) for g in user_guilds}
+    if str(guild_id) not in user_guild_ids:
+        raise HTTPException(status_code=403, detail="You don't have access to this guild")
+
+    guild_entry = next((g for g in user_guilds if str(g.get("id")) == str(guild_id)), None)
+    is_owner = guild_entry.get("owner", False) if guild_entry else False
+
+    if is_owner:
+        return JSONResponse({
+            "is_owner": True,
+            "permissions": {
+                "change_nickname": True,
+                "change_personality": True,
+                "make_events": True,
+                "manage_proposals": True,
+            },
+            "user_roles": []
+        })
+
+    if not bot_service.is_ready():
+        raise HTTPException(status_code=503, detail="Bot is not ready")
+
+    guild = bot_service.get_guild_by_id(int(guild_id))
+    if not guild:
+        raise HTTPException(status_code=404, detail="Guild not found or bot not in guild")
+
+    user_id = int(user.get("id"))
+    member = guild.get_member(user_id)
+    
+    # Try fetching if not in cache
+    if not member:
+        try:
+            member = await guild.fetch_member(user_id)
+            print(f"DEBUG: Fetched member {user_id} from guild {guild_id}")
+        except Exception as e:
+            print(f"DEBUG: Could not fetch member {user_id}: {e}")
+    
+    if not member:
+        print(f"DEBUG: Member {user_id} not found in guild {guild_id}")
+        return JSONResponse({
+            "is_owner": False,
+            "permissions": {
+                "change_nickname": False,
+                "change_personality": False,
+                "make_events": False,
+                "manage_proposals": False,
+            },
+            "user_roles": []
+        })
+
+    user_role_ids = [str(role.id) for role in member.roles]
+    print(f"DEBUG: User {user_id} has roles: {user_role_ids}")
+
+    settings = await settings_service.get_settings(guild_id)
+    role_settings = []
+    if settings and isinstance(settings, dict):
+        settings_obj = settings.get("settings") or {}
+        if isinstance(settings_obj, dict):
+            role_settings_data = settings_obj.get("role_settings") or {}
+            if isinstance(role_settings_data, dict):
+                role_settings = role_settings_data.get("roles") or []
+    
+    print(f"DEBUG: Found {len(role_settings)} role configurations")
+
+    permissions = {
+        "change_nickname": False,
+        "change_personality": False,
+        "make_events": False,
+        "manage_proposals": False,
+    }
+
+    for role_config in role_settings:
+        role_id = role_config.get("role_id")
+        role_name = role_config.get("role_name", "unknown")
+        if role_id and role_id in user_role_ids:
+            print(f"DEBUG: User has matching role: {role_name} ({role_id})")
+            for perm in role_config.get("permissions", []):
+                perm_name = perm.get("permission_name")
+                perm_allowed = perm.get("allowed", False)
+                if perm_name in permissions and perm_allowed:
+                    permissions[perm_name] = True
+                    print(f"DEBUG: Granted permission {perm_name} from role {role_name}")
+    
+    print(f"DEBUG: Final permissions: {permissions}")
+                    
+    return JSONResponse({
+        "is_owner": False,
+        "permissions": permissions,
+        "user_roles": user_role_ids
+    })

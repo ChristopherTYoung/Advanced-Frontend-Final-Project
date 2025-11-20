@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { useGuilds } from '../hooks/useApi'
+import { useGuilds, useUserPermissions } from '../hooks/useApi'
 import { useEvents, useCreateEvent, useProposals, useApproveProposal, useDeleteProposal, useCancelEvent } from '../hooks/useApi'
 import { useAuth } from '../auth'
 import { EventProposalList } from './EventsList'
@@ -10,6 +10,7 @@ export const EventsTab: React.FC = () => {
   const { user } = useAuth()
   const { data: guilds } = useGuilds(!!user)
   const [selectedGuildId, setSelectedGuildId] = useState<string | null>(null)
+  const { data: userPermissions } = useUserPermissions(selectedGuildId)
 
   const { data: events, isLoading: eventsLoading, refetch } = useEvents(selectedGuildId, !!selectedGuildId)
   const createEvent = useCreateEvent()
@@ -40,6 +41,9 @@ export const EventsTab: React.FC = () => {
     return [...proposals].filter(p => p.approved).sort((a, b) => new Date(a.time_of_event).getTime() - new Date(b.time_of_event).getTime())
   }, [proposals])
 
+  const canMakeEvents = userPermissions?.permissions?.make_events || false
+  const canManageProposals = userPermissions?.permissions?.manage_proposals || false
+
   return (
     <div>
       <h2>Events</h2>
@@ -56,11 +60,18 @@ export const EventsTab: React.FC = () => {
           ))}
         </select>
       </div>
-      <CreateEventForm
-        selectedGuildId={selectedGuildId || ""}
-        createEvent={createEvent}
-        refetch={refetch}
-      />
+      {canMakeEvents && (
+        <CreateEventForm
+          selectedGuildId={selectedGuildId || ""}
+          createEvent={createEvent}
+          refetch={refetch}
+        />
+      )}
+      {!canMakeEvents && selectedGuildId && (
+        <div style={{ padding: '12px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', marginBottom: '16px' }}>
+          <p style={{ margin: 0, color: '#666' }}>You don't have permission to create events in this server.</p>
+        </div>
+      )}
 
       <UpcomingEventsList
         eventsLoading={eventsLoading}
@@ -79,6 +90,7 @@ export const EventsTab: React.FC = () => {
         refetch={refetch}
         deleteProposalMutation={deleteProposalMutation}
         approvedProposals={approvedProposals}
+        canManageProposals={canManageProposals}
       />
     </div>
   )

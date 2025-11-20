@@ -201,6 +201,25 @@ async function fetchGuildRoles(guildId: string) {
   return data.roles || []
 }
 
+async function fetchUserPermissions(guildId: string) {
+  const response = await fetch(api(`/api/guilds/${guildId}/user/permissions`), {
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch user permissions')
+  }
+  const data = await response.json()
+  return data
+}
+
+export function useUserPermissions(guildId: string | null, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['userPermissions', guildId],
+    queryFn: () => fetchUserPermissions(guildId!),
+    enabled: enabled && !!guildId,
+  })
+}
+
 export function useGuildRoles(guildId: string | null, enabled: boolean = true) {
   return useQuery({
     queryKey: ['guildRoles', guildId],

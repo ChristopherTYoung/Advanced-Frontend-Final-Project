@@ -10,8 +10,8 @@ type EventListProps = {
   refetchProposals: (options?: RefetchOptions | undefined) => Promise<QueryObserverResult<EventProposal[], Error>>,
   refetch: (options?: RefetchOptions | undefined) => Promise<QueryObserverResult<Event[], Error>>,
   deleteProposalMutation: UseMutationResult<any, Error, ProposalMutationProps, unknown>,
-  approvedProposals: EventProposal[]
-
+  approvedProposals: EventProposal[],
+  canManageProposals: boolean
 }
 
 export function EventProposalList({ proposalsLoading,
@@ -21,7 +21,8 @@ export function EventProposalList({ proposalsLoading,
   refetchProposals,
   refetch,
   deleteProposalMutation,
-  approvedProposals }: EventListProps
+  approvedProposals,
+  canManageProposals }: EventListProps
 ) {
   return <div style={{ flex: 1 }}>
     <h3>Event Proposals</h3>
@@ -36,34 +37,36 @@ export function EventProposalList({ proposalsLoading,
             <li key={p.proposal_id} style={{ marginBottom: 8 }}>
               <strong>{p.event_name}</strong> — {new Date(p.time_of_event).toLocaleString()}
               <div>{p.event_details}</div>
-              <div style={{ marginTop: 6 }}>
-                <button
-                  onClick={async () => {
-                    if (!selectedGuildId) return;
-                    try {
-                      await approveProposal.mutateAsync({ guildId: selectedGuildId, proposalId: p.proposal_id });
-                      refetchProposals();
-                      refetch();
-                    } catch (err: any) {
-                      console.error('Approve failed', err);
-                    }
-                  }}
-                  disabled={Boolean((approveProposal as any).isLoading)}
-                >Approve</button>
-                <button
-                  onClick={async () => {
-                    if (!selectedGuildId) return;
-                    try {
-                      await deleteProposalMutation.mutateAsync({ guildId: selectedGuildId, proposalId: p.proposal_id });
-                      refetchProposals();
-                    } catch (err) {
-                      console.error('Delete failed', err);
-                    }
-                  }}
-                  style={{ marginLeft: 8 }}
-                  disabled={Boolean((deleteProposalMutation as any).isLoading)}
-                >Reject</button>
-              </div>
+              {canManageProposals && (
+                <div style={{ marginTop: 6 }}>
+                  <button
+                    onClick={async () => {
+                      if (!selectedGuildId) return;
+                      try {
+                        await approveProposal.mutateAsync({ guildId: selectedGuildId, proposalId: p.proposal_id });
+                        refetchProposals();
+                        refetch();
+                      } catch (err: any) {
+                        console.error('Approve failed', err);
+                      }
+                    }}
+                    disabled={Boolean((approveProposal as any).isLoading)}
+                  >Approve</button>
+                  <button
+                    onClick={async () => {
+                      if (!selectedGuildId) return;
+                      try {
+                        await deleteProposalMutation.mutateAsync({ guildId: selectedGuildId, proposalId: p.proposal_id });
+                        refetchProposals();
+                      } catch (err) {
+                        console.error('Delete failed', err);
+                      }
+                    }}
+                    style={{ marginLeft: 8 }}
+                    disabled={Boolean((deleteProposalMutation as any).isLoading)}
+                  >Reject</button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
