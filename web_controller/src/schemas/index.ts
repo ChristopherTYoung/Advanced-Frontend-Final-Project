@@ -48,6 +48,14 @@ export const GuildSettingsSchema = z.object({
   settings: z.object({
     personality: z.string().optional(),
     bot_nickname: z.string().max(32).optional(),
+    // roles is a list of role entries stored in separate role_settings JSON
+    roles: z.array(z.object({
+      role_name: z.string(),
+      permissions: z.array(z.object({
+        permission_name: z.string(),
+        allowed: z.boolean(),
+      }))
+    })).optional(),
   }),
   edited_at: z.string().nullable(),
 })
@@ -150,3 +158,36 @@ export const ProposalMutationPropsSchema = z.object({
 })
 
 export type ProposalMutationProps = z.infer<typeof ProposalMutationPropsSchema>
+
+export const PermissionSchema = z.object({
+  permission_name: z.union([
+    z.literal('change_nickname'),
+    z.literal('change_personality'),
+    z.literal('make_events'),
+    z.literal('manage_proposals'),
+    z.string(),
+  ]),
+  allowed: z.boolean(),
+})
+
+export type Permission = z.infer<typeof PermissionSchema>
+
+export const RoleSchema = z.object({
+  role_name: z.string(),
+  permissions: z.array(PermissionSchema),
+})
+
+export type Role = z.infer<typeof RoleSchema>
+
+export const BotSettingsSchema = z.object({
+  personality: z.string().optional(),
+  bot_nickname: z.string().max(32).optional(),
+})
+
+export type BotSettings = z.infer<typeof BotSettingsSchema>
+
+export const RoleSettingsSchema = z.object({
+  roles: z.array(RoleSchema).optional(),
+})
+
+export type RoleSettings = z.infer<typeof RoleSettingsSchema>

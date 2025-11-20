@@ -5,7 +5,8 @@ DROP TABLE IF EXISTS guild_bot_settings CASCADE;
 -- Create Guild Bot Settings table
 CREATE TABLE guild_bot_settings (
     guild_id VARCHAR(100) PRIMARY KEY,
-    settings JSON,
+    bot_settings JSON,
+    role_settings JSON,
     edited_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

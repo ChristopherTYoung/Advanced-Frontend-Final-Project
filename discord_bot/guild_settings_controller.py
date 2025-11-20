@@ -28,13 +28,14 @@ async def api_get_guild_settings(guild_id: str, request: Request):
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
     settings = await settings_service.get_settings(guild_id)
-    
+
     if settings:
+        s = settings.get("settings") if isinstance(settings, dict) else settings
         return JSONResponse(settings)
     else:
         return JSONResponse({
             "guild_id": guild_id,
-            "settings": {},
+            "settings": {"bot_settings": {}, "role_settings": {"roles": []}},
             "edited_at": None
         })
 
@@ -59,11 +60,19 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
         raise HTTPException(status_code=503, detail="Settings service not available")
 
     old_settings = await settings_service.get_settings(guild_id)
-    old_nickname = old_settings.get("settings", {}).get("bot_nickname") if old_settings else None
-    
+    old_nickname = None
+    if old_settings and isinstance(old_settings, dict):
+        settings_obj = old_settings.get("settings") or {}
+        bot_settings = settings_obj.get("bot_settings") if isinstance(settings_obj, dict) else None
+        if bot_settings and isinstance(bot_settings, dict):
+            old_nickname = bot_settings.get("bot_nickname")
+        else:
+            old_nickname = settings_obj.get("bot_nickname")
+
     settings_dict = payload.settings.model_dump(exclude_none=True)
-    new_nickname = settings_dict.get("bot_nickname")
-    
+    bot_settings = settings_dict.get("bot_settings", {})
+    new_nickname = bot_settings.get("bot_nickname")
+
     success = await settings_service.update_settings(guild_id, settings_dict)
     
     if not success:
@@ -75,7 +84,8 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
     return JSONResponse({
         "ok": True,
         "message": "Settings updated successfully",
-        "guild_id": guild_id
+        "guild_id": guild_id,
+        "settings": settings_dict,
     })
 
 

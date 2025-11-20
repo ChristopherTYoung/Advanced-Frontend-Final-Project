@@ -93,15 +93,35 @@ class BotSettings(BaseModel):
         return v
 
 
+class Permission(BaseModel):
+    permission_name: str
+    allowed: bool
+
+
+class Role(BaseModel):
+    role_name: str
+    permissions: list[Permission]
+
+
+class RoleSettings(BaseModel):
+    roles: Optional[list[Role]] = None
+
+
+class SettingsContainer(BaseModel):
+    """Container for bot and role settings stored in DB."""
+    bot_settings: Optional[BotSettings] = None
+    role_settings: Optional[RoleSettings] = None
+
+
 class UpdateSettingsRequest(BaseModel):
     """Request to update guild bot settings."""
-    settings: BotSettings = Field(..., description="Bot settings to update")
+    settings: SettingsContainer = Field(..., description="Bot and role settings to update")
 
 
 class GuildSettingsResponse(BaseModel):
     """Response containing guild settings."""
     guild_id: str
-    settings: Dict[str, Any]
+    settings: SettingsContainer | Dict[str, Any]
     edited_at: Optional[str] = None
 
 
