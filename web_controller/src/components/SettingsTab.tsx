@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { useGuilds, useGuildSettings, useUpdateGuildSettings, useGuildRoles, useUserPermissions } from '../hooks/useApi'
+import { useGuilds, useGuildSettings, useUpdateGuildSettings, useUserPermissions } from '../hooks/useApi'
+import { RoleSettings } from './RoleSettings'
+import { BotSettings } from './BotSettings'
 
 type RoleEntry = {
   role_id?: string;
@@ -17,7 +19,6 @@ export default function SettingsTab() {
 
   const { data: guilds, isLoading: guildsLoading } = useGuilds()
   const { data: settings, isLoading: settingsLoading } = useGuildSettings(selectedGuildId)
-  const { data: guildRoles } = useGuildRoles(selectedGuildId)
   const { data: userPermissions } = useUserPermissions(selectedGuildId)
   const updateSettings = useUpdateGuildSettings()
 
@@ -36,7 +37,6 @@ export default function SettingsTab() {
   }, [settings])
 
   const [roleEntries, setRoleEntries] = useState<RoleEntry[]>([])
-  const [selectedRoleToAdd, setSelectedRoleToAdd] = useState<string>('')
 
   const handleSave = async () => {
     if (!selectedGuildId) {
@@ -68,48 +68,9 @@ export default function SettingsTab() {
     }
   }
 
-  const permissionList = [
-    'change_nickname',
-    'change_personality',
-    'make_events',
-    'manage_proposals',
-  ]
-
   const isGuildOwner = userPermissions?.is_owner || false
   const canChangeNickname = userPermissions?.permissions?.change_nickname || false
   const canChangePersonality = userPermissions?.permissions?.change_personality || false
-
-  function addSelectedRole() {
-    if (!selectedRoleToAdd) return
-    const roleId = selectedRoleToAdd
-    const roleObj = guildRoles?.find((r: any) => r.id === roleId)
-    const roleName = roleObj?.name || roleId
-    if (roleEntries.find((r) => r.role_id === roleId || r.role_name === roleName)) return
-    const newEntry: RoleEntry = {
-      role_id: roleId,
-      role_name: roleName,
-      permissions: permissionList.map((p) => ({ permission_name: p, allowed: false })),
-    }
-    setRoleEntries((prev) => [...prev, newEntry])
-  }
-
-  function togglePermission(roleName: string, permissionName: string) {
-    setRoleEntries((prev) =>
-      prev.map((r) => {
-        if (r.role_name !== roleName) return r
-        return {
-          ...r,
-          permissions: r.permissions.map((p) =>
-            p.permission_name === permissionName ? { ...p, allowed: !p.allowed } : p
-          ),
-        }
-      })
-    )
-  }
-
-  function removeRole(roleName: string) {
-    setRoleEntries((prev) => prev.filter((r) => r.role_name !== roleName))
-  }
 
   return (
     <div className="settings-tab">
@@ -138,81 +99,21 @@ export default function SettingsTab() {
             <p>Loading settings...</p>
           ) : (
             <>
-              <div className="form-group">
-                <label htmlFor="nickname">Bot Nickname:</label>
-                <input
-                  id="nickname"
-                  type="text"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder="Enter bot nickname (max 32 characters)"
-                  maxLength={32}
-                  disabled={!canChangeNickname}
-                  style={{ opacity: canChangeNickname ? 1 : 0.6, cursor: canChangeNickname ? 'text' : 'not-allowed' }}
-                />
-                <small>Leave empty to use default bot username {!canChangeNickname && '(You don\'t have permission to change this)'}</small>
-              </div>
+              <BotSettings
+                nickname={nickname}
+                setNickname={setNickname}
+                canChangeNickname={canChangeNickname}
+                personality={personality}
+                setPersonality={setPersonality}
+                canChangePersonality={canChangePersonality}
+              />
 
-              <div className="form-group">
-                <label htmlFor="personality">Bot Personality:</label>
-                <textarea
-                  id="personality"
-                  value={personality}
-                  onChange={(e) => setPersonality(e.target.value)}
-                  placeholder="Enter bot personality description..."
-                  rows={6}
-                  disabled={!canChangePersonality}
-                  style={{ opacity: canChangePersonality ? 1 : 0.6, cursor: canChangePersonality ? 'text' : 'not-allowed' }}
-                />
-                <small>
-                  Example: "You are a friendly and helpful assistant. You love to make jokes and use emojis."
-                  {!canChangePersonality && ' (You don\'t have permission to change this)'}
-                </small>
-              </div>
-
-              <div className="form-group">
-                <h3>Role Settings</h3>
-                <label htmlFor="role-select">Add Role Permissions:</label>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <select
-                    id="role-select"
-                    value={selectedRoleToAdd}
-                    onChange={(e) => setSelectedRoleToAdd(e.target.value)}
-                    disabled={!guildRoles || !isGuildOwner}
-                  >
-                    <option value="">-- Select a Role --</option>
-                    {guildRoles?.map((r: any) => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
-                  <button type="button" onClick={addSelectedRole} disabled={!isGuildOwner}>Add Role</button>
-                </div>
-
-                {!isGuildOwner && <p style={{ color: '#666' }}>Only the guild owner can edit role permissions.</p>}
-                {roleEntries.length === 0 && <p>No roles configured yet.</p>}
-
-                {roleEntries.map((role) => (
-                  <div key={role.role_name} className="role-entry" style={{ border: '1px solid #ccc', padding: '8px', marginTop: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong>{role.role_name}</strong>
-                      <button type="button" onClick={() => removeRole(role.role_name)} disabled={!isGuildOwner}>Remove</button>
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap' }}>
-                      {role.permissions.map((p) => (
-                        <label key={p.permission_name} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <input
-                            type="checkbox"
-                            checked={!!p.allowed}
-                            onChange={() => togglePermission(role.role_name, p.permission_name)}
-                            disabled={!isGuildOwner}
-                          />
-                          {p.permission_name}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <RoleSettings
+                selectedGuildId={selectedGuildId}
+                roleEntries={roleEntries}
+                setRoleEntries={setRoleEntries}
+                isGuildOwner={isGuildOwner}
+              />
 
               <button
                 onClick={handleSave}
