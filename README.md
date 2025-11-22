@@ -163,10 +163,12 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 #### Estimates
 ##### Rubric Items:
 - deploy new features added to kubernetes
+- images
 
 ##### Features:
+- Maturity Preferences
 - Recorded offenses view
-- Ban/Kick users
+- Have AI review image content
 
 #### Delivered
 ##### Rubric Items:
@@ -202,10 +204,9 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ### Dec 6
 #### Estimates
 ##### Rubric Items:
-- images
   
 ##### Features:
-- Have AI review image content
+- Ban/Kick users (I don't know if I want this anymore. Could potentially be dangerous)
 
 #### Delivered
 ##### Rubric Items:
