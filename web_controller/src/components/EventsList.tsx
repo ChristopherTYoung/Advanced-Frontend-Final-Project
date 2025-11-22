@@ -1,5 +1,4 @@
 import type { QueryObserverResult, RefetchOptions, UseMutationResult } from '@tanstack/react-query';
-import type React from 'react';
 import type { Event, EventProposal, ProposalMutationProps } from '../schemas/index';
 
 type EventListProps = {

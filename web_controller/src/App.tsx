@@ -3,7 +3,6 @@ import { useAuth } from './auth'
 import { useState } from 'react'
 import { HomeTab } from './components/HomeTab'
 import { SetupTab } from './components/SetupTab'
-import { TestTab } from './components/TestTab'
 import { MessagesTab } from './components/MessagesTab'
 import EventsTab from './components/EventsTab'
 import SettingsTab from './components/SettingsTab'
@@ -54,12 +53,6 @@ function App() {
           Setup
         </button>
         <button 
-          className={`tab ${activeTab === 'test' ? 'active' : ''}`}
-          onClick={() => setActiveTab('test')}
-        >
-          Test
-        </button>
-        <button 
           className={`tab ${activeTab === 'messages' ? 'active' : ''}`}
           onClick={() => setActiveTab('messages')}
         >
@@ -93,10 +86,6 @@ function App() {
 
           {activeTab === 'setup' && (
             <SetupTab botInviteUrl={botInviteUrl} />
-          )}
-
-          {activeTab === 'test' && (
-            <TestTab user={user} />
           )}
 
           {activeTab === 'messages' && (

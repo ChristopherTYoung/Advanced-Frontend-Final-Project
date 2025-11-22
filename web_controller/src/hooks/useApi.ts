@@ -22,20 +22,6 @@ import {
 } from '../schemas'
 import type { BotSettings, RoleSettings } from '../schemas'
 
-type EventProposal = {
-  proposal_id: number;
-  user_id: string;
-  guild_id: string;
-  created_at: string;
-  time_of_event: string;
-  event_name: string;
-  approved: boolean;
-  time_approved: string | null;
-  event_id: number | null;
-  event_details?: string | undefined;
-}
-type ProposalMutationProps = { guildId: string; proposalId: number; }
-
 const API_BASE_URL = import.meta.env.VITE_DISCORD_BOT_URL || window.ENV?.VITE_DISCORD_BOT_URL
 
 function api(path: string): string {
@@ -97,7 +83,6 @@ async function fetchMessages(messageType?: string): Promise<Message[]> {
     throw new Error('Failed to fetch messages')
   }
   const data = await response.json()
-  // Backend returns { messages: [...] }, so extract the messages array
   const messagesArray = data.messages || []
   return z.array(MessageSchema).parse(messagesArray)
 }
@@ -143,7 +128,6 @@ async function createEvent(params: { guildId: string; payload: EventCreateReques
 }
 
 async function sendMessage(params: { guildId: string; channelId: string; message: string }) {
-  // Validate request data
   const validated = SendMessageRequestSchema.parse({
     guild_id: params.guildId,
     channel_id: params.channelId,
@@ -391,7 +375,6 @@ export function useUpdateGuildSettings() {
     mutationFn: ({ guildId, settings }: { guildId: string, settings: { bot_settings?: BotSettings, role_settings?: RoleSettings } }) => 
       updateGuildSettings(guildId, settings),
     onSuccess: (_, variables) => {
-      // Invalidate guild settings query to refetch
       queryClient.invalidateQueries({ queryKey: ['guildSettings', variables.guildId] })
     },
   })
