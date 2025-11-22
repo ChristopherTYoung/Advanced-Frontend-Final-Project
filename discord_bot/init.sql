@@ -7,6 +7,7 @@ CREATE TABLE guild_bot_settings (
     guild_id VARCHAR(100) PRIMARY KEY,
     bot_settings JSON,
     role_settings JSON,
+    content_maturity_preferences JSON,
     edited_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

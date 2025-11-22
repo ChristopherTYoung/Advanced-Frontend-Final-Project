@@ -108,10 +108,17 @@ class RoleSettings(BaseModel):
     roles: Optional[list[Role]] = None
 
 
+class ContentMaturityPreferences(BaseModel):
+    """Content maturity rating preferences."""
+    banned_content: Optional[list[str]] = Field(None, description="List of banned content phrases/topics")
+    allowed_maturity_score: Optional[int] = Field(None, ge=0, le=10, description="Maximum allowed maturity score (0-10)")
+
+
 class SettingsContainer(BaseModel):
     """Container for bot and role settings stored in DB."""
     bot_settings: Optional[BotSettings] = None
     role_settings: Optional[RoleSettings] = None
+    content_maturity_preferences: Optional[ContentMaturityPreferences] = None
 
 
 class UpdateSettingsRequest(BaseModel):

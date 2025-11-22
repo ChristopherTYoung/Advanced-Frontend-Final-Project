@@ -7,7 +7,7 @@ from services.settings_service import settings_service
 from services.bot_service import bot_service
 from services.llm_service import llm_service
 
-from schemas import UpdateSettingsRequest
+from schemas import UpdateSettingsRequest, ContentMaturityPreferences
 
 router = APIRouter()
 
@@ -280,4 +280,93 @@ async def api_get_user_permissions(guild_id: str, request: Request):
         "is_owner": False,
         "permissions": permissions,
         "user_roles": user_role_ids
+    })
+
+
+@router.get("/api/guilds/{guild_id}/maturity-preferences")
+async def api_get_maturity_preferences(guild_id: str, request: Request):
+    """Get content maturity preferences for a guild."""
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    access_token = request.session.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated - no access token")
+
+    user_guilds = await auth_service.get_user_guilds(access_token)
+    user_guild_ids = {str(g.get("id")) for g in user_guilds}
+    
+    if str(guild_id) not in user_guild_ids:
+        raise HTTPException(status_code=403, detail="You don't have access to this guild")
+
+    settings = await settings_service.get_settings(guild_id)
+    
+    if settings and isinstance(settings, dict):
+        settings_obj = settings.get("settings") or {}
+        if isinstance(settings_obj, dict):
+            maturity_prefs = settings_obj.get("content_maturity_preferences") or {}
+            return JSONResponse({
+                "guild_id": guild_id,
+                "content_maturity_preferences": maturity_prefs
+            })
+    
+    return JSONResponse({
+        "guild_id": guild_id,
+        "content_maturity_preferences": {}
+    })
+
+
+@router.post("/api/guilds/{guild_id}/maturity-preferences")
+async def api_update_maturity_preferences(guild_id: str, preferences: ContentMaturityPreferences, request: Request):
+    """Update content maturity preferences for a guild. Only guild owner can modify."""
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    access_token = request.session.get("access_token")
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Not authenticated - no access token")
+
+    user_guilds = await auth_service.get_user_guilds(access_token)
+    user_guild_ids = {str(g.get("id")) for g in user_guilds}
+    
+    if str(guild_id) not in user_guild_ids:
+        raise HTTPException(status_code=403, detail="You don't have access to this guild")
+
+    # Check if user is owner - only owners can modify maturity preferences
+    guild_entry = next((g for g in user_guilds if str(g.get("id")) == str(guild_id)), None)
+    is_owner = guild_entry.get("owner", False) if guild_entry else False
+
+    if not is_owner:
+        print(f"DEBUG: Blocked maturity preferences update for guild {guild_id}. User is not owner.")
+        raise HTTPException(status_code=403, detail="Only the guild owner may modify content maturity preferences")
+
+    # Get existing settings
+    existing_settings = await settings_service.get_settings(guild_id)
+    
+    settings_dict = {}
+    if existing_settings and isinstance(existing_settings, dict):
+        settings_obj = existing_settings.get("settings") or {}
+        if isinstance(settings_obj, dict):
+            settings_dict = {
+                "bot_settings": settings_obj.get("bot_settings"),
+                "role_settings": settings_obj.get("role_settings"),
+                "content_maturity_preferences": preferences.model_dump(exclude_none=True)
+            }
+    else:
+        settings_dict = {
+            "content_maturity_preferences": preferences.model_dump(exclude_none=True)
+        }
+
+    success = await settings_service.update_settings(guild_id, settings_dict)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update maturity preferences")
+
+    return JSONResponse({
+        "ok": True,
+        "message": "Content maturity preferences updated successfully",
+        "guild_id": guild_id,
+        "content_maturity_preferences": preferences.model_dump(exclude_none=True)
     })

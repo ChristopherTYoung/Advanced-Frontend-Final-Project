@@ -27,7 +27,7 @@ class SettingsService:
             # Prefer the new columns (bot_settings, role_settings). If the DB still
             # contains the old `settings` column, fall back to that for compatibility.
             row = await conn.fetchrow(
-                "SELECT bot_settings, role_settings, edited_at FROM guild_bot_settings WHERE guild_id = $1",
+                "SELECT bot_settings, role_settings, content_maturity_preferences, edited_at FROM guild_bot_settings WHERE guild_id = $1",
                 guild_id
             )
 
@@ -63,9 +63,17 @@ class SettingsService:
                     except Exception:
                         role_settings_data = None
 
+                content_maturity_data = row["content_maturity_preferences"]
+                if isinstance(content_maturity_data, str):
+                    try:
+                        content_maturity_data = json.loads(content_maturity_data)
+                    except Exception:
+                        content_maturity_data = None
+
                 settings_container = {
                     "bot_settings": bot_settings_data if bot_settings_data is not None else {},
-                    "role_settings": role_settings_data if role_settings_data is not None else {"roles": []}
+                    "role_settings": role_settings_data if role_settings_data is not None else {"roles": []},
+                    "content_maturity_preferences": content_maturity_data if content_maturity_data is not None else {}
                 }
 
                 return {
@@ -84,6 +92,7 @@ class SettingsService:
         async with self.db_pool.acquire() as conn:
             bot_settings = settings.get("bot_settings") if isinstance(settings, dict) else None
             role_settings = settings.get("role_settings") if isinstance(settings, dict) else None
+            content_maturity = settings.get("content_maturity_preferences") if isinstance(settings, dict) else None
 
             if bot_settings is None and isinstance(settings, dict):
                 if "personality" in settings or "bot_nickname" in settings:
@@ -94,17 +103,19 @@ class SettingsService:
 
             await conn.execute(
                 """
-                INSERT INTO guild_bot_settings (guild_id, bot_settings, role_settings, edited_at)
-                VALUES ($1, $2, $3, $4)
+                INSERT INTO guild_bot_settings (guild_id, bot_settings, role_settings, content_maturity_preferences, edited_at)
+                VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT (guild_id) 
                 DO UPDATE SET 
                     bot_settings = EXCLUDED.bot_settings,
                     role_settings = EXCLUDED.role_settings,
+                    content_maturity_preferences = EXCLUDED.content_maturity_preferences,
                     edited_at = EXCLUDED.edited_at
                 """,
                 guild_id,
                 json.dumps(bot_settings) if bot_settings is not None else None,
                 json.dumps(role_settings) if role_settings is not None else None,
+                json.dumps(content_maturity) if content_maturity is not None else None,
                 datetime.utcnow()
             )
             print(f"DEBUG SettingsService: Updated settings for guild {guild_id}")
