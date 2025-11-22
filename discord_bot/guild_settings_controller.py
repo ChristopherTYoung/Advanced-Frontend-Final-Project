@@ -220,8 +220,7 @@ async def api_get_user_permissions(guild_id: str, request: Request):
 
     user_id = int(user.get("id"))
     member = guild.get_member(user_id)
-    
-    # Try fetching if not in cache
+
     if not member:
         try:
             member = await guild.fetch_member(user_id)
