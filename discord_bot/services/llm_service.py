@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any, List, Callable
 
 
 class LLMService:
-    def __init__(self, base_url: str = "http://ai-snow.reindeer-pinecone.ts.net:9292/v1", model: str = "gpt-oss-120b"):
+    def __init__(self, base_url: str = "http://ai-snow.reindeer-pinecone.ts.net:9292/v1", model: str = "gemma3-27b"):
         self.base_url = base_url
         self.model = model
         self.timeout = 30.0  # 30 second timeout
@@ -14,7 +14,11 @@ class LLMService:
     def register_tool(self, name: str, description: str, parameters: Dict[str, Any], function: Callable):
         tool_definition = {
             "type": "function",
-            "function": {"name": name, "description": description, "parameters": parameters},
+            "function": {
+                "name": name,
+                "description": description,
+                "parameters": parameters,
+            }
         }
         self.tools.append(tool_definition)
         self.tool_functions[name] = function
@@ -49,9 +53,23 @@ class LLMService:
                 messages.append({"role": "system", "content": system_prompt})
 
             if conversation_history:
-                messages.extend(conversation_history)
+                for msg in conversation_history:
+                    if msg["role"] == "user":
+                        if not messages or messages[-1]["role"] != "user":
+                            messages.append(msg)
+                    else:
+                        if messages and messages[-1]["role"] == "user":
+                            messages.append(msg)
 
-            messages.append({"role": "user", "content": user_message})
+            if messages and messages[-1]["role"] == "user":
+                messages[-1] = {"role": "user", "content": user_message}
+            else:
+                messages.append({"role": "user", "content": user_message})
+
+            # Debug: Print message structure
+            print(f"DEBUG: Message structure being sent:")
+            for i, msg in enumerate(messages):
+                print(f"  [{i}] role={msg['role']}, content_preview={msg['content'][:50]}...")
 
             payload = {
                 "model": self.model,
@@ -63,6 +81,8 @@ class LLMService:
             if use_tools and self.tools:
                 payload["tools"] = self.tools
                 payload["tool_choice"] = "auto"
+                print(f"DEBUG: Sending {len(self.tools)} tools to LLM")
+                print(f"DEBUG: First tool structure: {json.dumps(self.tools[0], indent=2)}")
 
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(f"{self.base_url}/chat/completions", json=payload)
@@ -88,17 +108,16 @@ class LLMService:
                             print(f"DEBUG: LLM requested {len(tool_calls)} tool call(s) in round {round_idx}")
 
                             for tool_call in tool_calls:
-                                function_name = tool_call["function"]["name"]
-                                raw_args = tool_call["function"].get("arguments", "{}")
+                                function_name = tool_call.get("name") or tool_call.get("function", {}).get("name")
+                                raw_args = tool_call.get("arguments") or tool_call.get("function", {}).get("arguments", "{}")
                                 try:
-                                    function_args = json.loads(raw_args)
+                                    function_args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
                                 except Exception:
                                     function_args = {"arguments": raw_args}
                                 tool_call_id = tool_call.get("id")
 
                                 print(f"DEBUG: Executing tool '{function_name}' with args: {function_args}")
                                 tool_result = await self.execute_tool_call(function_name, function_args)
-                                print(f"DEBUG: Tool '{function_name}' returned: {tool_result}")
 
                                 try:
                                     tool_content = json.dumps(tool_result)
@@ -168,8 +187,6 @@ class LLMService:
                                     return str(tool_content)[:1000]
                         except Exception:
                             pass
-
-                        print("ERROR: No message content after tool-call rounds; last choice:", choice if 'choice' in locals() else message_response)
                         return None
 
                     return message_response.get("content")

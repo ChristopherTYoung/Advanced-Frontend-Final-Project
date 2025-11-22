@@ -163,7 +163,14 @@ class BotService:
             elif msg_type in ["dm", "received"]:
                 conversation.append({"role": "user", "content": f"{username}: {content}"})
 
-        return conversation     
+        filtered_conversation = []
+        for msg in conversation:
+            if not filtered_conversation or filtered_conversation[-1]["role"] != msg["role"]:
+                filtered_conversation.append(msg)
+            else:
+                filtered_conversation[-1]["content"] += "\n" + msg["content"]
+
+        return filtered_conversation     
 
     async def _get_personality(self, guild_id: Optional[str]) -> Optional[str]:
         if not guild_id or guild_id == "DM" or not self.settings_service:
