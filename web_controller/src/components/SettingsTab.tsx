@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { useGuilds, useGuildSettings, useUpdateGuildSettings, useUserPermissions } from '../hooks/useApi'
 import { RoleSettings } from './RoleSettings'
 import { BotSettings } from './BotSettings'
+import { MaturitySettings } from './MaturitySettings'
 
 type RoleEntry = {
   role_id?: string;
@@ -14,6 +15,8 @@ export default function SettingsTab() {
   const [selectedGuildId, setSelectedGuildId] = useState<string | null>(null)
   const [nickname, setNickname] = useState('')
   const [personality, setPersonality] = useState('')
+  const [bannedContent, setBannedContent] = useState<string[]>([])
+  const [allowedMaturityScore, setAllowedMaturityScore] = useState(5)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -26,13 +29,18 @@ export default function SettingsTab() {
     if (settings?.settings) {
       const botSettings = settings.settings.bot_settings || {}
       const roleSettings = settings.settings.role_settings || { roles: [] }
+      const maturityPrefs = settings.settings.content_maturity_preferences || {}
       setNickname(botSettings.bot_nickname || '')
       setPersonality(botSettings.personality || '')
       setRoleEntries(roleSettings.roles || [])
+      setBannedContent(maturityPrefs.banned_content || [])
+      setAllowedMaturityScore(maturityPrefs.allowed_maturity_score ?? 5)
     } else {
       setNickname('')
       setPersonality('')
       setRoleEntries([])
+      setBannedContent([])
+      setAllowedMaturityScore(5)
     }
   }, [settings])
 
@@ -56,6 +64,10 @@ export default function SettingsTab() {
       }
       if (isGuildOwner) {
         payload.role_settings = { roles: roleEntries }
+        payload.content_maturity_preferences = {
+          banned_content: bannedContent.filter(c => c.trim() !== ''),
+          allowed_maturity_score: allowedMaturityScore,
+        }
       }
 
       await updateSettings.mutateAsync({
@@ -112,6 +124,14 @@ export default function SettingsTab() {
                 selectedGuildId={selectedGuildId}
                 roleEntries={roleEntries}
                 setRoleEntries={setRoleEntries}
+                isGuildOwner={isGuildOwner}
+              />
+
+              <MaturitySettings
+                bannedContent={bannedContent}
+                setBannedContent={setBannedContent}
+                allowedMaturityScore={allowedMaturityScore}
+                setAllowedMaturityScore={setAllowedMaturityScore}
                 isGuildOwner={isGuildOwner}
               />
 

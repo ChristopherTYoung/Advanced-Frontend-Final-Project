@@ -167,11 +167,19 @@ export const RoleSettingsSchema = z.object({
 
 export type RoleSettings = z.infer<typeof RoleSettingsSchema>
 
+export const ContentMaturityPreferencesSchema = z.object({
+  banned_content: z.array(z.string()).optional(),
+  allowed_maturity_score: z.number().min(0).max(10).optional(),
+})
+
+export type ContentMaturityPreferences = z.infer<typeof ContentMaturityPreferencesSchema>
+
 export const GuildSettingsSchema = z.object({
   guild_id: z.string(),
   settings: z.object({
     bot_settings: BotSettingsSchema.optional(),
     role_settings: RoleSettingsSchema.optional(),
+    content_maturity_preferences: ContentMaturityPreferencesSchema.optional(),
   }),
   edited_at: z.string().nullable(),
 })
@@ -182,7 +190,21 @@ export const UpdateGuildSettingsRequestSchema = z.object({
   settings: z.object({
     bot_settings: BotSettingsSchema.optional(),
     role_settings: RoleSettingsSchema.optional(),
+    content_maturity_preferences: ContentMaturityPreferencesSchema.optional(),
   }),
 })
 
 export type UpdateGuildSettingsRequest = z.infer<typeof UpdateGuildSettingsRequestSchema>
+
+export const OffenseSchema = z.object({
+  offense_id: z.number(),
+  guild_id: z.string(),
+  channel_id: z.string(),
+  user_id: z.string().nullable(),
+  body: z.string().nullable(),
+  picture: z.string().nullable().optional(),
+  time_of_offense: z.string().optional(),
+  offensive_score: z.number().nullable().optional(),
+})
+
+export type Offense = z.infer<typeof OffenseSchema>

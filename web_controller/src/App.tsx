@@ -6,10 +6,11 @@ import { SetupTab } from './components/SetupTab'
 import { MessagesTab } from './components/MessagesTab'
 import EventsTab from './components/EventsTab'
 import SettingsTab from './components/SettingsTab'
+import { OffensesTab } from './components/OffensesTab'
 
 function App() {
   const { user, isLoading, login, logout, getAvatarUrl } = useAuth()
-  const [activeTab, setActiveTab] = useState<'home' | 'setup' | 'test' | 'messages' | 'settings' | 'events'>('home')
+  const [activeTab, setActiveTab] = useState<'home' | 'setup' | 'test' | 'messages' | 'settings' | 'events' | 'offenses'>('home')
 
   function handleLogin() {
     login()
@@ -70,6 +71,12 @@ function App() {
         >
           Settings
         </button>
+        <button 
+          className={`tab ${activeTab === 'offenses' ? 'active' : ''}`}
+          onClick={() => setActiveTab('offenses')}
+        >
+          Violations
+        </button>
       </div>
 
       {isLoading ? (
@@ -98,6 +105,10 @@ function App() {
 
           {activeTab === 'settings' && (
             <SettingsTab />
+          )}
+
+          {activeTab === 'offenses' && (
+            <OffensesTab />
           )}
         </>
       )}

@@ -11,6 +11,7 @@ import {
   EventSchema,
   EventCreateRequestSchema,
   ProposalSchema,
+  OffenseSchema,
   type User,
   type Guild,
   type Channel,
@@ -19,8 +20,9 @@ import {
   type Event,
   type EventCreateRequest,
   type Proposal,
+  type Offense,
 } from '../schemas'
-import type { BotSettings, RoleSettings } from '../schemas'
+import type { BotSettings, RoleSettings, ContentMaturityPreferences } from '../schemas'
 
 const API_BASE_URL = import.meta.env.VITE_DISCORD_BOT_URL || window.ENV?.VITE_DISCORD_BOT_URL
 
@@ -158,7 +160,7 @@ async function fetchGuildSettings(guildId: string): Promise<GuildSettings> {
   return GuildSettingsSchema.parse(data)
 }
 
-async function updateGuildSettings(guildId: string, settings: { bot_settings?: BotSettings, role_settings?: RoleSettings } | Record<string, any>) {
+async function updateGuildSettings(guildId: string, settings: { bot_settings?: BotSettings, role_settings?: RoleSettings, content_maturity_preferences?: ContentMaturityPreferences } | Record<string, any>) {
   const validated = UpdateGuildSettingsRequestSchema.parse({ settings })
 
   const response = await fetch(api(`/api/guilds/${guildId}/settings`), {
@@ -194,6 +196,18 @@ async function fetchUserPermissions(guildId: string) {
   }
   const data = await response.json()
   return data
+}
+
+async function fetchOffenses(guildId: string): Promise<Offense[]> {
+  const response = await fetch(api(`/api/guilds/${guildId}/offenses`), {
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch offenses')
+  }
+  const data = await response.json()
+  const offensesArray = data.offenses || []
+  return z.array(OffenseSchema).parse(offensesArray)
 }
 
 export function useUserPermissions(guildId: string | null, enabled: boolean = true) {
@@ -372,11 +386,19 @@ export function useUpdateGuildSettings() {
   const queryClient = useQueryClient()
   
   return useMutation({
-    mutationFn: ({ guildId, settings }: { guildId: string, settings: { bot_settings?: BotSettings, role_settings?: RoleSettings } }) => 
+    mutationFn: ({ guildId, settings }: { guildId: string, settings: { bot_settings?: BotSettings, role_settings?: RoleSettings, content_maturity_preferences?: ContentMaturityPreferences } }) => 
       updateGuildSettings(guildId, settings),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['guildSettings', variables.guildId] })
     },
+  })
+}
+
+export function useOffenses(guildId: string | null, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['offenses', guildId],
+    queryFn: () => fetchOffenses(guildId!),
+    enabled: enabled && !!guildId,
   })
 }
 

@@ -126,6 +126,90 @@ async def tool_propose_event(bot_service, guild_id: str, user_id: str, time_of_e
         return {"success": False, "error": str(e)}
 
 
+async def tool_remove_offensive_message(
+    bot_service, 
+    guild_id: str, 
+    channel_id: str, 
+    message_id: str, 
+    user_id: str,
+    reason: str,
+    message_content: str,
+    warning_message: str,
+    offensive_score: int
+) -> Dict[str, Any]:
+    """Remove a message that violates server content maturity rules"""
+    try:
+        print(f"DEBUG: tool_remove_offensive_message called for message {message_id}")
+        
+        guild = bot_service.get_guild_by_id(int(guild_id))
+        if not guild:
+            return {"success": False, "error": "Guild not found"}
+
+        channel = bot_service.get_channel_by_id(int(channel_id))
+        if not channel or not isinstance(channel, discord.TextChannel):
+            return {"success": False, "error": "Channel not found"}
+
+        # Fetch message and download attachments before deleting
+        try:
+            message = await channel.fetch_message(int(message_id))
+        except discord.NotFound:
+            print(f"DEBUG: Message {message_id} already deleted")
+            return {"success": False, "error": "Message already deleted"}
+        except discord.Forbidden:
+            return {"success": False, "error": "Bot lacks permission to access message"}
+
+        picture_data = None
+        if bot_service.offense_service and message.attachments:
+            try:
+                for attachment in message.attachments:
+                    if attachment.content_type and 'image' in attachment.content_type:
+                        import httpx
+                        async with httpx.AsyncClient() as client:
+                            img_response = await client.get(attachment.url)
+                            if img_response.status_code == 200:
+                                picture_data = img_response.content
+                        break
+            except Exception as e:
+                print(f"ERROR downloading attachment: {e}")
+
+        # Delete the message
+        try:
+            await message.delete()
+            print(f"DEBUG: Deleted message {message_id}")
+        except discord.NotFound:
+            print(f"DEBUG: Message {message_id} already deleted")
+            return {"success": False, "error": "Message already deleted"}
+        except discord.Forbidden:
+            return {"success": False, "error": "Bot lacks permission to delete messages"}
+
+        # Record the offense in database
+        if bot_service.offense_service:
+            await bot_service.offense_service.record_offense(
+                guild_id=guild_id,
+                channel_id=channel_id,
+                user_id=user_id,
+                body=message_content,
+                picture=picture_data,
+                offensive_score=offensive_score
+            )
+
+        # Send warning message
+        await channel.send(warning_message)
+        print(f"DEBUG: Sent warning message for offense")
+
+        return {
+            "success": True,
+            "message": "Offensive message removed and warning sent",
+            "reason": reason
+        }
+
+    except Exception as e:
+        print(f"ERROR in tool_remove_offensive_message: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
 def register_tools(llm_service, bot_service):
     llm_service.register_tool(
         name="get_guilds",
@@ -226,4 +310,24 @@ def register_tools(llm_service, bot_service):
             "required": ["guild_id", "channel_id", "message"],
         },
         function=functools.partial(tool_send_message, bot_service),
+    )
+
+    llm_service.register_tool(
+        name="remove_offensive_message",
+        description="Remove a message that violates server content maturity rules and record it as an offense. Use this when content exceeds maturity limits or contains banned content.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "guild_id": {"type": "string", "description": "Guild ID where the message was sent"},
+                "channel_id": {"type": "string", "description": "Channel ID where the message was sent"},
+                "message_id": {"type": "string", "description": "ID of the message to remove"},
+                "user_id": {"type": "string", "description": "ID of the user who sent the message"},
+                "reason": {"type": "string", "description": "Reason for removal (e.g., 'content score 8/10 exceeds limit', 'contains banned content')"},
+                "message_content": {"type": "string", "description": "The content of the message being removed"},
+                "warning_message": {"type": "string", "description": "Warning message to send to the channel after removal (mention the user and explain the violation)"},
+                "offensive_score": {"type": "integer", "description": "Maturity score from 0-10 that you rated this content (0=G-rated, 10=extreme)"},
+            },
+            "required": ["guild_id", "channel_id", "message_id", "user_id", "reason", "message_content", "warning_message", "offensive_score"],
+        },
+        function=functools.partial(tool_remove_offensive_message, bot_service),
     )

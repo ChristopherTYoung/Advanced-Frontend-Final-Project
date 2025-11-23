@@ -198,6 +198,66 @@ class LLMService:
             print("ERROR: LLM request timed out")
             return None
 
+    async def moderate_content(self, content: str, image_url: Optional[str] = None) -> Dict[str, Any]:
+        prompt = f"""Analyze this content for offensive, inappropriate, or harmful material. 
+Rate it on a scale of 0-10 where:
+- 0-2: Safe for all ages, no issues
+- 3-4: Mild content, minor concerns
+- 5-6: Moderate content, some inappropriate language or themes
+- 7-8: Mature content, explicit language or adult themes
+- 9-10: Highly offensive, harmful, or illegal content
+
+Content to analyze: "{content}"
+
+Respond ONLY with a JSON object in this exact format:
+{{"score": <number 0-10>, "issues": ["issue1", "issue2"], "reasoning": "brief explanation"}}"""
+
+        if image_url:
+            prompt += f"\n\nImage URL: {image_url}\nNote: Analyze both text and image content."
+
+        messages = [{"role": "user", "content": prompt}]
+            
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": 300,
+        }
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.post(f"{self.base_url}/chat/completions", json=payload)
+                
+            if response.status_code == 200:
+                data = response.json()
+                if "choices" in data and len(data["choices"]) > 0:
+                    content_text = data["choices"][0].get("message", {}).get("content", "")
+
+                    try:
+                        if "```json" in content_text:
+                            content_text = content_text.split("```json")[1].split("```")[0].strip()
+                        elif "```" in content_text:
+                            content_text = content_text.split("```")[1].split("```")[0].strip()
+                            
+                        result = json.loads(content_text)
+
+                        return {
+                            "score": int(result.get("score", 0)),
+                            "issues": result.get("issues", []),
+                            "reasoning": result.get("reasoning", "")
+                        }
+                    except json.JSONDecodeError:
+                        print(f"ERROR: Failed to parse moderation response as JSON: {content_text}")
+                        score = 0
+                        if "score" in content_text.lower():
+                            import re
+                            match = re.search(r'score["\s:]+(\d+)', content_text.lower())
+                            if match:
+                                score = int(match.group(1))
+                        return {"score": score, "issues": [], "reasoning": "Parse error"}
+                else:
+                    print(f"ERROR: Moderation API returned status {response.status_code}")
+                    return {"score": 0, "issues": [], "reasoning": "API error"}
+
     async def generate_discord_response(
         self, 
         user_message: str, 

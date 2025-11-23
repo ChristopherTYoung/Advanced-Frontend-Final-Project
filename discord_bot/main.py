@@ -15,16 +15,19 @@ from services.message_service import message_service
 from services.settings_service import settings_service
 from services.llm_service import llm_service
 from services.event_service import event_service
+from services.offense_service import OffenseService
 from services.llm_tools import tool_send_message
 from schemas import (
     SendMessageRequest
 )
 from event_controller import router as event_router
 from guild_settings_controller import router as guild_settings_router
+from offense_controller import router as offense_router
 
 app = FastAPI()
 app.include_router(event_router)
 app.include_router(guild_settings_router)
+app.include_router(offense_router)
 
 SESSION_SECRET = os.environ.get("DISCORD_SESSION_SECRET", "dev-secret-change-me")
 FRONTEND_ORIGINS = os.environ.get("FRONTEND_ORIGINS", "http://localhost:5173")
@@ -41,6 +44,10 @@ async def startup_event():
     await message_service.init_db_pool(DATABASE_URL)
     await settings_service.init_db_pool(DATABASE_URL)
     await event_service.init_db_pool(DATABASE_URL)
+
+    offense_service = OffenseService(message_service.db_pool)
+    bot_service.offense_service = offense_service
+    
     await bot_service.start()
     async def _event_checker_loop():
         print("DEBUG: Event checker background task started")
@@ -101,6 +108,8 @@ async def shutdown_event():
     await message_service.close_db_pool()
     await settings_service.close_db_pool()
     await event_service.close_db_pool()
+    if bot_service.offense_service:
+        await bot_service.offense_service.close()
     task = getattr(app.state, 'event_checker_task', None)
     if task and not task.done():
         task.cancel()

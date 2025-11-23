@@ -54,6 +54,17 @@ CREATE TABLE event_proposal (
     time_approved TIMESTAMP NULL,
     event_id INTEGER NULL REFERENCES event(event_id)
 );
-
 CREATE INDEX idx_event_proposal_guild_id ON event_proposal(guild_id);
 CREATE INDEX idx_event_proposal_user_id ON event_proposal(user_id);
+
+-- Create Offense table
+CREATE TABLE offense (
+    offense_id SERIAL PRIMARY KEY,
+    guild_id VARCHAR(100) NOT NULL,
+    channel_id VARCHAR(100) NOT NULL,
+    user_id VARCHAR(50),
+    body VARCHAR(2000),
+    picture BYTEA,
+    time_of_offense TIMESTAMP NOT NULL DEFAULT NOW(),
+    offensive_score INTEGER
+);
