@@ -12,7 +12,7 @@ spec:
     - host: discord-bot-controller.duckdns.org
       http:
         paths:
-          - path: /bot/api(/|$)(.*)
+          - path: /api(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
