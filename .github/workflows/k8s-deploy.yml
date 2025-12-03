@@ -27,7 +27,13 @@ jobs:
             --from-literal=VITE_DISCORD_CLIENT_ID="${VITE_DISCORD_CLIENT_ID}" \
             --from-literal=VITE_DISCORD_CLIENT_SECRET="${VITE_DISCORD_CLIENT_SECRET}" \
             --from-literal=VITE_DISCORD_BOT_URL="${VITE_DISCORD_BOT_URL}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic discord-bot-token --namespace chris-discord \
             --from-literal=VITE_DISCORD_BOT_TOKEN="${VITE_DISCORD_BOT_TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic postgres-secret --namespace chris-discord \
             --from-literal=POSTGRES_DB="${POSTGRES_DB}" \
             --from-literal=POSTGRES_USER="${POSTGRES_USER}" \
             --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
