@@ -113,7 +113,16 @@ class TestMessageService:
         svc, conn = service
         # Mock fetch to return sample data
         conn.fetch.return_value = [
-            {"message_id": i, "role": "user", "body": f"Message {i}", "created_at": make_datetime(), "user_id": "123", "guild_id": "DM", "channel_id": "DM"} for i in range(5)
+            {
+                "message_id": i,
+                "role": "user",
+                "body": f"Message {i}",
+                "created_at": make_datetime(),
+                "user_id": "123",
+                "guild_id": "DM",
+                "channel_id": "DM",
+            }
+            for i in range(5)
         ]
 
         history = await svc.get_history(limit=10)
@@ -123,7 +132,17 @@ class TestMessageService:
     async def test_get_history_with_type_filter(self, service):
         """Test retrieving messages with message_type filter."""
         svc, conn = service
-        conn.fetch.return_value = [{"message_id": 1, "role": "user", "body": "DM", "created_at": make_datetime(), "user_id": "123", "guild_id": "DM", "channel_id": "DM"}]
+        conn.fetch.return_value = [
+            {
+                "message_id": 1,
+                "role": "user",
+                "body": "DM",
+                "created_at": make_datetime(),
+                "user_id": "123",
+                "guild_id": "DM",
+                "channel_id": "DM",
+            }
+        ]
 
         history = await svc.get_history(limit=10, message_type="dm")
         assert len(history) == 1
@@ -132,7 +151,17 @@ class TestMessageService:
     async def test_get_history_with_user_filter(self, service):
         """Test retrieving messages filtered by user_id."""
         svc, conn = service
-        conn.fetch.return_value = [{"message_id": 1, "role": "user", "body": "Test", "created_at": make_datetime(), "user_id": "123", "guild_id": "DM", "channel_id": "DM"}]
+        conn.fetch.return_value = [
+            {
+                "message_id": 1,
+                "role": "user",
+                "body": "Test",
+                "created_at": make_datetime(),
+                "user_id": "123",
+                "guild_id": "DM",
+                "channel_id": "DM",
+            }
+        ]
 
         history = await svc.get_history(limit=10, user_id="123")
         assert len(history) == 1
@@ -151,7 +180,16 @@ class TestMessageService:
         """Test that history respects the limit parameter."""
         svc, conn = service
         conn.fetch.return_value = [
-            {"message_id": i, "role": "user", "body": f"Message {i}", "created_at": make_datetime(), "user_id": "123", "guild_id": "DM", "channel_id": "DM"} for i in range(3)
+            {
+                "message_id": i,
+                "role": "user",
+                "body": f"Message {i}",
+                "created_at": make_datetime(),
+                "user_id": "123",
+                "guild_id": "DM",
+                "channel_id": "DM",
+            }
+            for i in range(3)
         ]
 
         history = await svc.get_history(limit=3)
@@ -161,7 +199,17 @@ class TestMessageService:
     async def test_get_dm_messages(self, service):
         """Test retrieving only DM messages."""
         svc, conn = service
-        conn.fetch.return_value = [{"message_id": 1, "role": "user", "body": "DM", "created_at": make_datetime(), "user_id": "123", "guild_id": "DM", "channel_id": "DM"}]
+        conn.fetch.return_value = [
+            {
+                "message_id": 1,
+                "role": "user",
+                "body": "DM",
+                "created_at": make_datetime(),
+                "user_id": "123",
+                "guild_id": "DM",
+                "channel_id": "DM",
+            }
+        ]
 
         history = await svc.get_history(limit=10, guild_id="DM")
         assert len(history) == 1
@@ -222,8 +270,24 @@ class TestMessageServiceIntegration:
         svc, conn = service
         conn.execute.return_value = None
         conn.fetch.return_value = [
-            {"message_id": 1, "role": "user", "body": "Hello", "created_at": make_datetime(), "user_id": "123", "guild_id": "guild_1", "channel_id": "channel_1"},
-            {"message_id": 2, "role": "assistant", "body": "Hi", "created_at": make_datetime(), "user_id": "bot", "guild_id": "guild_1", "channel_id": "channel_1"},
+            {
+                "message_id": 1,
+                "role": "user",
+                "body": "Hello",
+                "created_at": make_datetime(),
+                "user_id": "123",
+                "guild_id": "guild_1",
+                "channel_id": "channel_1",
+            },
+            {
+                "message_id": 2,
+                "role": "assistant",
+                "body": "Hi",
+                "created_at": make_datetime(),
+                "user_id": "bot",
+                "guild_id": "guild_1",
+                "channel_id": "channel_1",
+            },
         ]
 
         # User message
@@ -255,7 +319,16 @@ class TestMessageServiceIntegration:
         svc, conn = service
         conn.execute.return_value = None
         conn.fetch.return_value = [
-            {"message_id": i, "role": "user", "body": f"User {i}", "created_at": make_datetime(), "user_id": f"{i}", "guild_id": "guild_1", "channel_id": "channel_1"} for i in range(3)
+            {
+                "message_id": i,
+                "role": "user",
+                "body": f"User {i}",
+                "created_at": make_datetime(),
+                "user_id": f"{i}",
+                "guild_id": "guild_1",
+                "channel_id": "channel_1",
+            }
+            for i in range(3)
         ]
 
         users = [("user1", "123"), ("user2", "456"), ("user3", "789")]
@@ -272,5 +345,3 @@ class TestMessageServiceIntegration:
 
         history = await svc.get_history(limit=10)
         assert len(history) == 3
-
-
