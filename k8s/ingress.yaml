@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: discord-bot-ingress
+  name: app-ingress
   namespace: chris-discord
   annotations:
     nginx.ingress.kubernetes.io/use-regex: "true"
@@ -19,19 +19,6 @@ spec:
                 name: discord-bot-svc
                 port:
                   number: 8000
-
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: app-ingress
-  namespace: chris-discord
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: discord-bot-controller.duckdns.org
-      http:
-        paths:
           - path: /
             pathType: Prefix
             backend:
