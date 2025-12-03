@@ -3,6 +3,7 @@ import functools
 import discord
 from datetime import datetime
 
+
 async def tool_get_guilds(bot_service) -> Dict[str, Any]:
     try:
         guilds = bot_service.get_guilds()
@@ -17,10 +18,7 @@ async def tool_get_channels(bot_service, guild_id: str) -> Dict[str, Any]:
         if not guild:
             return {"success": False, "error": "Guild not found"}
 
-        channels = [
-            {"id": str(channel.id), "name": channel.name, "type": "text"}
-            for channel in guild.text_channels
-        ]
+        channels = [{"id": str(channel.id), "name": channel.name, "type": "text"} for channel in guild.text_channels]
         return {"success": True, "guild_name": guild.name, "channels": channels, "count": len(channels)}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -102,9 +100,12 @@ async def tool_send_message(bot_service, guild_id: str, channel_id: str, message
         return {"success": False, "error": str(e)}
 
 
-async def tool_propose_event(bot_service, guild_id: str, user_id: str, time_of_event: str, event_name: str, event_details: Optional[str] = "") -> Dict[str, Any]:
+async def tool_propose_event(
+    bot_service, guild_id: str, user_id: str, time_of_event: str, event_name: str, event_details: Optional[str] = ""
+) -> Dict[str, Any]:
     try:
         from .event_service import event_service
+
         try:
             dt = datetime.fromisoformat(time_of_event)
         except Exception:
@@ -127,20 +128,20 @@ async def tool_propose_event(bot_service, guild_id: str, user_id: str, time_of_e
 
 
 async def tool_remove_offensive_message(
-    bot_service, 
-    guild_id: str, 
-    channel_id: str, 
-    message_id: str, 
+    bot_service,
+    guild_id: str,
+    channel_id: str,
+    message_id: str,
     user_id: str,
     reason: str,
     message_content: str,
     warning_message: str,
-    offensive_score: int
+    offensive_score: int,
 ) -> Dict[str, Any]:
     """Remove a message that violates server content maturity rules"""
     try:
         print(f"DEBUG: tool_remove_offensive_message called for message {message_id}")
-        
+
         guild = bot_service.get_guild_by_id(int(guild_id))
         if not guild:
             return {"success": False, "error": "Guild not found"}
@@ -162,8 +163,9 @@ async def tool_remove_offensive_message(
         if bot_service.offense_service and message.attachments:
             try:
                 for attachment in message.attachments:
-                    if attachment.content_type and 'image' in attachment.content_type:
+                    if attachment.content_type and "image" in attachment.content_type:
                         import httpx
+
                         async with httpx.AsyncClient() as client:
                             img_response = await client.get(attachment.url)
                             if img_response.status_code == 200:
@@ -190,22 +192,19 @@ async def tool_remove_offensive_message(
                 user_id=user_id,
                 body=message_content,
                 picture=picture_data,
-                offensive_score=offensive_score
+                offensive_score=offensive_score,
             )
 
         # Send warning message
         await channel.send(warning_message)
         print(f"DEBUG: Sent warning message for offense")
 
-        return {
-            "success": True,
-            "message": "Offensive message removed and warning sent",
-            "reason": reason
-        }
+        return {"success": True, "message": "Offensive message removed and warning sent", "reason": reason}
 
     except Exception as e:
         print(f"ERROR in tool_remove_offensive_message: {e}")
         import traceback
+
         traceback.print_exc()
         return {"success": False, "error": str(e)}
 
@@ -322,12 +321,30 @@ def register_tools(llm_service, bot_service):
                 "channel_id": {"type": "string", "description": "Channel ID where the message was sent"},
                 "message_id": {"type": "string", "description": "ID of the message to remove"},
                 "user_id": {"type": "string", "description": "ID of the user who sent the message"},
-                "reason": {"type": "string", "description": "Reason for removal (e.g., 'content score 8/10 exceeds limit', 'contains banned content')"},
+                "reason": {
+                    "type": "string",
+                    "description": "Reason for removal (e.g., 'content score 8/10 exceeds limit', 'contains banned content')",
+                },
                 "message_content": {"type": "string", "description": "The content of the message being removed"},
-                "warning_message": {"type": "string", "description": "Warning message to send to the channel after removal (mention the user and explain the violation)"},
-                "offensive_score": {"type": "integer", "description": "Maturity score from 0-10 that you rated this content (0=G-rated, 10=extreme)"},
+                "warning_message": {
+                    "type": "string",
+                    "description": "Warning message to send to the channel after removal (mention the user and explain the violation)",
+                },
+                "offensive_score": {
+                    "type": "integer",
+                    "description": "Maturity score from 0-10 that you rated this content (0=G-rated, 10=extreme)",
+                },
             },
-            "required": ["guild_id", "channel_id", "message_id", "user_id", "reason", "message_content", "warning_message", "offensive_score"],
+            "required": [
+                "guild_id",
+                "channel_id",
+                "message_id",
+                "user_id",
+                "reason",
+                "message_content",
+                "warning_message",
+                "offensive_score",
+            ],
         },
         function=functools.partial(tool_remove_offensive_message, bot_service),
     )

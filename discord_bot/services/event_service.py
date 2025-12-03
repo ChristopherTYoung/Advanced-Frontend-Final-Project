@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 import asyncpg
 
+
 class EventService:
     def __init__(self):
         self.db_pool: Optional[asyncpg.Pool] = None
@@ -15,7 +16,9 @@ class EventService:
         if self.db_pool:
             await self.db_pool.close()
 
-    async def create_event(self, guild_id: str, user_id: str, time_of_event: datetime, event_name: str, event_details: str) -> Optional[int]:
+    async def create_event(
+        self, guild_id: str, user_id: str, time_of_event: datetime, event_name: str, event_details: str
+    ) -> Optional[int]:
         if not self.db_pool:
             logging.info("WARNING EventService: Database pool not initialized")
             return None
@@ -38,12 +41,12 @@ class EventService:
                 event_details,
             )
             return int(row["event_id"]) if row else None
-        
+
     async def list_events(self, guild_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         if not self.db_pool:
             logging.info("WARNING EventService: Database pool not initialized")
             return []
-        
+
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT event_id, user_id, guild_id, time_of_event, event_name, event_details, canceled FROM event WHERE guild_id = $1 ORDER BY time_of_event ASC LIMIT $2",
@@ -52,15 +55,17 @@ class EventService:
             )
             events = []
             for row in rows:
-                events.append({
-                    "event_id": int(row["event_id"]),
-                    "user_id": row["user_id"],
-                    "guild_id": row["guild_id"],
-                    "time_of_event": row["time_of_event"].isoformat(),
-                    "event_name": row["event_name"],
-                    "event_details": row["event_details"],
-                    "canceled": row["canceled"].isoformat() if row["canceled"] else None,
-                })
+                events.append(
+                    {
+                        "event_id": int(row["event_id"]),
+                        "user_id": row["user_id"],
+                        "guild_id": row["guild_id"],
+                        "time_of_event": row["time_of_event"].isoformat(),
+                        "event_name": row["event_name"],
+                        "event_details": row["event_details"],
+                        "canceled": row["canceled"].isoformat() if row["canceled"] else None,
+                    }
+                )
             return events
 
     async def get_due_events(self, up_to: datetime) -> List[Dict[str, Any]]:
@@ -78,14 +83,16 @@ class EventService:
             )
             events = []
             for row in rows:
-                events.append({
-                    "event_id": int(row["event_id"]),
-                    "user_id": row["user_id"],
-                    "guild_id": row["guild_id"],
-                    "time_of_event": row["time_of_event"].isoformat(),
-                    "event_name": row["event_name"],
-                    "event_details": row["event_details"],
-                })
+                events.append(
+                    {
+                        "event_id": int(row["event_id"]),
+                        "user_id": row["user_id"],
+                        "guild_id": row["guild_id"],
+                        "time_of_event": row["time_of_event"].isoformat(),
+                        "event_name": row["event_name"],
+                        "event_details": row["event_details"],
+                    }
+                )
             return events
 
     async def delete_event(self, event_id: int) -> bool:
@@ -114,11 +121,13 @@ class EventService:
                 pass
             return False
 
-    async def create_proposal(self, guild_id: str, user_id: str, time_of_event: datetime, event_name: str, event_details: str) -> Optional[int]:
+    async def create_proposal(
+        self, guild_id: str, user_id: str, time_of_event: datetime, event_name: str, event_details: str
+    ) -> Optional[int]:
         if not self.db_pool:
             logging.info("WARNING EventService: Database pool not initialized")
             return None
-        
+
         if time_of_event.tzinfo is not None:
             try:
                 time_of_event = time_of_event.astimezone(timezone.utc).replace(tzinfo=None)
@@ -142,7 +151,7 @@ class EventService:
     async def list_proposals(self, guild_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         if not self.db_pool:
             return []
-        
+
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT proposal_id, user_id, guild_id, time_of_event, event_name, event_details, created_at, approved, time_approved, event_id FROM event_proposal WHERE guild_id = $1 ORDER BY created_at ASC LIMIT $2",
@@ -151,18 +160,20 @@ class EventService:
             )
             proposals = []
             for row in rows:
-                proposals.append({
-                    "proposal_id": int(row["proposal_id"]),
-                    "user_id": row["user_id"],
-                    "guild_id": row["guild_id"],
-                    "time_of_event": row["time_of_event"].isoformat(),
-                    "event_name": row["event_name"],
-                    "event_details": row["event_details"],
-                    "created_at": row["created_at"].isoformat(),
-                    "approved": bool(row["approved"]),
-                    "time_approved": row["time_approved"].isoformat() if row["time_approved"] else None,
-                    "event_id": int(row["event_id"]) if row["event_id"] else None,
-                })
+                proposals.append(
+                    {
+                        "proposal_id": int(row["proposal_id"]),
+                        "user_id": row["user_id"],
+                        "guild_id": row["guild_id"],
+                        "time_of_event": row["time_of_event"].isoformat(),
+                        "event_name": row["event_name"],
+                        "event_details": row["event_details"],
+                        "created_at": row["created_at"].isoformat(),
+                        "approved": bool(row["approved"]),
+                        "time_approved": row["time_approved"].isoformat() if row["time_approved"] else None,
+                        "event_id": int(row["event_id"]) if row["event_id"] else None,
+                    }
+                )
             return proposals
 
     async def get_proposal(self, proposal_id: int) -> Optional[Dict[str, Any]]:
@@ -193,7 +204,7 @@ class EventService:
         proposal = await self.get_proposal(proposal_id)
         if not proposal:
             return None
-        
+
         time_of_event = datetime.fromisoformat(proposal["time_of_event"])
         event_id = await self.create_event(
             guild_id=proposal["guild_id"],
@@ -221,5 +232,6 @@ class EventService:
         async with self.db_pool.acquire() as conn:
             await conn.execute("DELETE FROM event_proposal WHERE proposal_id = $1", proposal_id)
             return True
+
 
 event_service = EventService()

@@ -14,7 +14,7 @@ class OffenseService:
         user_id: Optional[str],
         body: Optional[str],
         picture: Optional[bytes] = None,
-        offensive_score: Optional[int] = None
+        offensive_score: Optional[int] = None,
     ) -> Optional[int]:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -28,11 +28,11 @@ class OffenseService:
                 user_id,
                 body,
                 picture,
-                offensive_score
+                offensive_score,
             )
             if row:
                 print(f"DEBUG: Recorded offense {row['offense_id']} for guild {guild_id}")
-                return row['offense_id']
+                return row["offense_id"]
             return None
 
     async def get_offenses(self, guild_id: str, limit: int = 50) -> list:
@@ -46,7 +46,7 @@ class OffenseService:
                 LIMIT $2
                 """,
                 guild_id,
-                limit
+                limit,
             )
             return [dict(row) for row in rows]
 

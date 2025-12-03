@@ -7,6 +7,7 @@ from typing import Optional, List, Dict, Any
 from services.llm_service import llm_service
 from services.llm_tools import register_tools, tool_change_bot_nickname, tool_send_message
 
+
 class BotService:
     def __init__(self):
         self.bot_token = os.environ.get("DISCORD_BOT_TOKEN") or os.environ.get("VITE_DISCORD_BOT_TOKEN")
@@ -22,11 +23,11 @@ class BotService:
 
         self.bot = commands.Bot(command_prefix="!", intents=intents)
         self.bot_task: Optional[asyncio.Task] = None
-        
+
         self._register_events()
 
         register_tools(llm_service, self)
-        
+
     def message_is_mention(self, message):
         bot_user = self.bot.user
         if bot_user:
@@ -36,7 +37,7 @@ class BotService:
                 content = message.content or ""
                 if f"<@{bot_user.id}>" in content or f"<@!{bot_user.id}>" in content:
                     return True
-                    
+
         return False
 
     async def announce_nickname_change(self, guild_id: str, old_nickname: str, new_nickname: str) -> None:
@@ -125,16 +126,16 @@ class BotService:
             if isinstance(message.channel, discord.TextChannel):
                 guild = message.guild
                 guild_id_str = str(guild.id) if guild else None
-                
+
                 # Only check user messages (not bot messages, and not empty messages)
                 if guild_id_str and self.settings_service and self.offense_service:
                     # Skip if message is from bot or if both content and attachments are empty
                     if message.author != self.bot.user and (message.content or message.attachments):
                         await self._check_offensive_content(message, guild_id_str)
-                
+
                 if self.message_is_mention(message):
                     await self._handle_server_message(message)
-                    
+
             elif isinstance(message.channel, discord.DMChannel):
                 await self._handle_dm(message)
 
@@ -147,17 +148,9 @@ class BotService:
             return []
 
         if user_id and not guild_id:
-            messages = await self.message_service.get_history(
-                limit=limit * 2, 
-                guild_id="DM",
-                channel_id=channel_id
-            )
+            messages = await self.message_service.get_history(limit=limit * 2, guild_id="DM", channel_id=channel_id)
         elif guild_id and channel_id:
-            messages = await self.message_service.get_history(
-                limit=limit * 2,
-                guild_id=guild_id,
-                channel_id=channel_id
-            )
+            messages = await self.message_service.get_history(limit=limit * 2, guild_id=guild_id, channel_id=channel_id)
         else:
             messages = await self.message_service.get_history(limit=limit * 2)
 
@@ -166,7 +159,7 @@ class BotService:
             msg_type = msg.get("type")
             content = msg.get("content", "")
             username = msg.get("username", "Unknown")
-            
+
             if msg_type == "sent":
                 conversation.append({"role": "assistant", "content": content})
             elif msg_type in ["dm", "received"]:
@@ -179,12 +172,12 @@ class BotService:
             else:
                 filtered_conversation[-1]["content"] += "\n" + msg["content"]
 
-        return filtered_conversation     
+        return filtered_conversation
 
     async def _get_personality(self, guild_id: Optional[str]) -> Optional[str]:
         if not guild_id or guild_id == "DM" or not self.settings_service:
             return None
-            
+
         try:
             settings = await self.settings_service.get_settings(guild_id)
             if settings and settings.get("settings"):
@@ -197,7 +190,7 @@ class BotService:
         except Exception as e:
             print(f"ERROR fetching personality settings: {e}")
             return None
-        
+
         return None
 
     async def _check_offensive_content(self, message: discord.Message, guild_id: str) -> None:
@@ -205,22 +198,22 @@ class BotService:
         settings = await self.settings_service.get_settings(guild_id)
         if not settings or not settings.get("settings"):
             return
-            
+
         maturity_prefs = settings["settings"].get("content_maturity_preferences", {})
         allowed_score = maturity_prefs.get("allowed_maturity_score", 10)
         banned_content = maturity_prefs.get("banned_content", [])
 
         # Build context for LLM
         banned_list = ", ".join(banned_content) if banned_content else "none"
-        
+
         # Include attachment info
         attachment_info = ""
         if message.attachments:
             attachment_types = [att.content_type or "unknown" for att in message.attachments]
             attachment_info = f"\nAttachments: {', '.join(attachment_types)}"
-        
+
         message_text = message.content if message.content else "[No text content]"
-        
+
         prompt = f"""Analyze this Discord message for content maturity violations.
 
 Server Rules:
@@ -253,15 +246,11 @@ Required parameters for the tool (only if removing):
 
 If the message is acceptable, simply respond with "Message is acceptable" and do not call any tools."""
 
-        await llm_service.generate_response(
-            user_message=prompt,
-            conversation_history=[],
-            use_tools=True
-        )
-    
+        await llm_service.generate_response(user_message=prompt, conversation_history=[], use_tools=True)
+
     async def _handle_dm(self, message: discord.Message):
         print(f"DEBUG: DM detected! Message service connected: {self.message_service is not None}")
-        
+
         if self.message_service:
             await self.message_service.add_to_history(
                 message_type="dm",
@@ -275,24 +264,22 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
             print(f"DEBUG: DM added to history from {message.author.name}: {message.content}")
         else:
             print("WARNING: Message service not connected!")
-        
+
         print(f"DM received from {message.author.name}: {message.content}")
 
         conversation_history = await self._build_conversation_history(
-            user_id=str(message.author.id), 
-            channel_id=str(message.channel.id),
-            limit=10
+            user_id=str(message.author.id), channel_id=str(message.channel.id), limit=10
         )
         print(f"DEBUG: Built conversation history with {len(conversation_history)} messages for DM")
 
         print(f"DEBUG: Generating LLM response for DM from {message.author.name}")
-        
+
         llm_response = await llm_service.generate_discord_response(
-            user_message=message.content, 
-            username=message.author.name, 
+            user_message=message.content,
+            username=message.author.name,
             is_dm=True,
             conversation_history=conversation_history,
-            personality=None
+            personality=None,
         )
 
         if llm_response:
@@ -315,10 +302,10 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
 
     async def _handle_server_message(self, message: discord.Message):
         print(f"DEBUG: Server message detected! Message service connected: {self.message_service is not None}")
-        
+
         guild = message.guild
         guild_id_str = str(guild.id) if guild else None
-        
+
         if self.message_service:
             await self.message_service.add_to_history(
                 message_type="received",
@@ -338,18 +325,16 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
             print("WARNING: Message service not connected!")
 
         conversation_history = await self._build_conversation_history(
-            guild_id=guild_id_str,
-            channel_id=str(message.channel.id),
-            limit=10
+            guild_id=guild_id_str, channel_id=str(message.channel.id), limit=10
         )
         print(f"DEBUG: Built conversation history with {len(conversation_history)} messages for server")
-        
+
         personality = await self._get_personality(guild_id_str)
         if personality:
             print(f"DEBUG: Using personality setting for guild {guild_id_str}: {personality[:50]}...")
 
         print(f"DEBUG: Generating LLM response for server message from {message.author.name}")
-        
+
         llm_response = await llm_service.generate_discord_response(
             user_message=message.content,
             username=message.author.name,
@@ -359,7 +344,7 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
             guild_name=guild.name if guild else None,
             conversation_history=conversation_history,
             use_tools=True,
-            personality=personality
+            personality=personality,
         )
 
         if llm_response:
@@ -396,12 +381,11 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
                 if task.exception():
                     print(f"ERROR: Bot task failed with exception: {task.exception()}")
                     import traceback
-                    
-                    traceback.print_exception(
-                        type(task.exception()), task.exception(), task.exception().__traceback__
-                    )
+
+                    traceback.print_exception(type(task.exception()), task.exception(), task.exception().__traceback__)
 
                 self.bot_task.add_done_callback(task_done_callback)
+
         else:
             print("Warning: DISCORD_BOT_TOKEN not set, bot will not start")
 
@@ -453,5 +437,6 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
             )
 
         return True
+
 
 bot_service = BotService()

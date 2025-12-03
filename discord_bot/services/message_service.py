@@ -55,7 +55,12 @@ class MessageService:
             )
 
     async def get_history(
-        self, limit: int = 50, message_type: str = None, user_id: str = None, guild_id: str = None, channel_id: str = None
+        self,
+        limit: int = 50,
+        message_type: str = None,
+        user_id: str = None,
+        guild_id: str = None,
+        channel_id: str = None,
     ) -> List[Dict[str, Any]]:
         if not self.db_pool:
             print("WARNING MessageService: Database pool not initialized")
@@ -113,5 +118,6 @@ class MessageService:
 
     async def get_dm_messages(self, limit: int = 50) -> List[Dict[str, Any]]:
         return await self.get_history(limit=limit, guild_id="DM")
+
 
 message_service = MessageService()

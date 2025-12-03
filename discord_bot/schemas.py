@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 # User schemas
 class UserInfo(BaseModel):
     """User information from Discord OAuth."""
+
     id: str
     username: str
     avatar: str
@@ -18,6 +19,7 @@ class UserInfo(BaseModel):
 # Guild schemas
 class GuildInfo(BaseModel):
     """Guild (server) information."""
+
     id: str
     name: str
     icon: Optional[str] = None
@@ -28,9 +30,11 @@ class GuildInfo(BaseModel):
 # Channel schemas
 class ChannelInfo(BaseModel):
     """Channel information."""
+
     id: str
     name: str
     type: Optional[int] = None
+
 
 # Message schemas
 class SendMessageRequest(BaseModel):
@@ -38,9 +42,11 @@ class SendMessageRequest(BaseModel):
     channel_id: str = Field(..., description="Channel ID where the message will be sent")
     message: Optional[str] = Field(None, min_length=1, max_length=2000, description="Raw message content")
     instructions: Optional[str] = Field(None, description="Optional instructions for the LLM to generate the message")
-    event_details: Optional[str] = Field(None, description="Optional event details to include when generating the message")
+    event_details: Optional[str] = Field(
+        None, description="Optional event details to include when generating the message"
+    )
 
-    @field_validator('message')
+    @field_validator("message")
     @classmethod
     def validate_message(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
@@ -52,6 +58,7 @@ class SendMessageRequest(BaseModel):
 
 class MessageInfo(BaseModel):
     """Message information from database."""
+
     id: str
     type: str
     content: str
@@ -67,10 +74,11 @@ class MessageInfo(BaseModel):
 # Settings schemas
 class BotSettings(BaseModel):
     """Bot settings for a guild."""
+
     personality: Optional[str] = Field(None, max_length=2000, description="Bot personality description")
     bot_nickname: Optional[str] = Field(None, max_length=32, description="Bot nickname in the server")
 
-    @field_validator('bot_nickname')
+    @field_validator("bot_nickname")
     @classmethod
     def validate_nickname(cls, v: Optional[str]) -> Optional[str]:
         """Validate nickname length and content."""
@@ -82,7 +90,7 @@ class BotSettings(BaseModel):
                 raise ValueError("Nickname must be 32 characters or less")
         return v
 
-    @field_validator('personality')
+    @field_validator("personality")
     @classmethod
     def validate_personality(cls, v: Optional[str]) -> Optional[str]:
         """Validate personality is not empty after stripping."""
@@ -110,12 +118,16 @@ class RoleSettings(BaseModel):
 
 class ContentMaturityPreferences(BaseModel):
     """Content maturity rating preferences."""
+
     banned_content: Optional[list[str]] = Field(None, description="List of banned content phrases/topics")
-    allowed_maturity_score: Optional[int] = Field(None, ge=0, le=10, description="Maximum allowed maturity score (0-10)")
+    allowed_maturity_score: Optional[int] = Field(
+        None, ge=0, le=10, description="Maximum allowed maturity score (0-10)"
+    )
 
 
 class SettingsContainer(BaseModel):
     """Container for bot and role settings stored in DB."""
+
     bot_settings: Optional[BotSettings] = None
     role_settings: Optional[RoleSettings] = None
     content_maturity_preferences: Optional[ContentMaturityPreferences] = None
@@ -123,11 +135,13 @@ class SettingsContainer(BaseModel):
 
 class UpdateSettingsRequest(BaseModel):
     """Request to update guild bot settings."""
+
     settings: SettingsContainer = Field(..., description="Bot and role settings to update")
 
 
 class GuildSettingsResponse(BaseModel):
     """Response containing guild settings."""
+
     guild_id: str
     settings: SettingsContainer | Dict[str, Any]
     edited_at: Optional[str] = None
@@ -136,29 +150,34 @@ class GuildSettingsResponse(BaseModel):
 # Response schemas
 class SuccessResponse(BaseModel):
     """Generic success response."""
+
     ok: bool = True
     message: str
 
 
 class ErrorResponse(BaseModel):
     """Generic error response."""
+
     error: str
     detail: Optional[str] = None
 
 
 class MessageSentResponse(SuccessResponse):
     """Response after sending a message."""
+
     message: str = "Message sent successfully"
 
 
 class SettingsUpdatedResponse(SuccessResponse):
     """Response after updating settings."""
+
     message: str = "Settings updated successfully"
     guild_id: str
 
 
 class SettingsDeletedResponse(SuccessResponse):
     """Response after deleting settings."""
+
     message: str = "Settings deleted successfully"
     guild_id: str
 
@@ -166,33 +185,39 @@ class SettingsDeletedResponse(SuccessResponse):
 # Authentication responses
 class AuthCallbackResponse(BaseModel):
     """Response from OAuth callback."""
+
     success: bool
     redirect_url: str
 
 
 class MeResponse(BaseModel):
     """Response from /api/me endpoint."""
+
     user: Optional[UserInfo] = None
 
 
 class LogoutResponse(BaseModel):
     """Response from logout endpoint."""
+
     ok: bool = True
 
 
 # Guild responses
 class GuildsResponse(BaseModel):
     """Response containing list of guilds."""
+
     guilds: list[GuildInfo]
 
 
 class ChannelsResponse(BaseModel):
     """Response containing list of channels."""
+
     channels: list[ChannelInfo]
 
 
 class MessagesResponse(BaseModel):
     """Response containing list of messages."""
+
     messages: list[MessageInfo]
 
 
@@ -215,6 +240,7 @@ class EventInfo(BaseModel):
 
 class EventsResponse(BaseModel):
     events: list[EventInfo]
+
 
 class ProposalCreateRequest(BaseModel):
     user_id: str = Field(..., description="User who proposed the event")

@@ -22,13 +22,13 @@ class SettingsService:
         if not self.db_pool:
             print("WARNING SettingsService: Database pool not initialized")
             return None
-        
+
         async with self.db_pool.acquire() as conn:
             # Prefer the new columns (bot_settings, role_settings). If the DB still
             # contains the old `settings` column, fall back to that for compatibility.
             row = await conn.fetchrow(
                 "SELECT bot_settings, role_settings, content_maturity_preferences, edited_at FROM guild_bot_settings WHERE guild_id = $1",
-                guild_id
+                guild_id,
             )
 
             if row:
@@ -37,8 +37,7 @@ class SettingsService:
                     role_settings_data = row["role_settings"]
                 except Exception:
                     old_row = await conn.fetchrow(
-                        "SELECT settings, edited_at FROM guild_bot_settings WHERE guild_id = $1",
-                        guild_id
+                        "SELECT settings, edited_at FROM guild_bot_settings WHERE guild_id = $1", guild_id
                     )
                     if not old_row:
                         return None
@@ -48,7 +47,7 @@ class SettingsService:
                     return {
                         "guild_id": guild_id,
                         "settings": settings_data,
-                        "edited_at": old_row["edited_at"].isoformat() if old_row["edited_at"] else None
+                        "edited_at": old_row["edited_at"].isoformat() if old_row["edited_at"] else None,
                     }
 
                 if isinstance(bot_settings_data, str):
@@ -73,13 +72,13 @@ class SettingsService:
                 settings_container = {
                     "bot_settings": bot_settings_data if bot_settings_data is not None else {},
                     "role_settings": role_settings_data if role_settings_data is not None else {"roles": []},
-                    "content_maturity_preferences": content_maturity_data if content_maturity_data is not None else {}
+                    "content_maturity_preferences": content_maturity_data if content_maturity_data is not None else {},
                 }
 
                 return {
                     "guild_id": guild_id,
                     "settings": settings_container,
-                    "edited_at": row["edited_at"].isoformat() if row["edited_at"] else None
+                    "edited_at": row["edited_at"].isoformat() if row["edited_at"] else None,
                 }
 
             return None
@@ -116,7 +115,7 @@ class SettingsService:
                 json.dumps(bot_settings) if bot_settings is not None else None,
                 json.dumps(role_settings) if role_settings is not None else None,
                 json.dumps(content_maturity) if content_maturity is not None else None,
-                datetime.utcnow()
+                datetime.utcnow(),
             )
             print(f"DEBUG SettingsService: Updated settings for guild {guild_id}")
             return True
@@ -127,11 +126,9 @@ class SettingsService:
             return False
 
         async with self.db_pool.acquire() as conn:
-            await conn.execute(
-                "DELETE FROM guild_bot_settings WHERE guild_id = $1",
-                guild_id
-            )
+            await conn.execute("DELETE FROM guild_bot_settings WHERE guild_id = $1", guild_id)
             print(f"DEBUG SettingsService: Deleted settings for guild {guild_id}")
             return True
+
 
 settings_service = SettingsService()

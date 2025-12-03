@@ -105,4 +105,5 @@ class AuthService:
         else:
             return f"{self.frontend_origin}/?auth=error"
 
+
 auth_service = AuthService()

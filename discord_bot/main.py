@@ -17,9 +17,7 @@ from services.llm_service import llm_service
 from services.event_service import event_service
 from services.offense_service import OffenseService
 from services.llm_tools import tool_send_message
-from schemas import (
-    SendMessageRequest
-)
+from schemas import SendMessageRequest
 from event_controller import router as event_router
 from guild_settings_controller import router as guild_settings_router
 from offense_controller import router as offense_router
@@ -38,6 +36,7 @@ DATABASE_URL = os.environ.get("DB_CONNECTION_STRING")
 bot_service.message_service = message_service
 bot_service.settings_service = settings_service
 
+
 @app.on_event("startup")
 async def startup_event():
     print(f"DEBUG: Initializing database pool...")
@@ -47,8 +46,9 @@ async def startup_event():
 
     offense_service = OffenseService(message_service.db_pool)
     bot_service.offense_service = offense_service
-    
+
     await bot_service.start()
+
     async def _event_checker_loop():
         print("DEBUG: Event checker background task started")
         while True:
@@ -58,7 +58,7 @@ async def startup_event():
                 print(f"DEBUG: Found {len(due_events)} due event(s)")
 
             for ev in due_events:
-                guild_obj = bot_service.get_guild_by_id(int(ev['guild_id']))
+                guild_obj = bot_service.get_guild_by_id(int(ev["guild_id"]))
                 if not guild_obj:
                     print(f"WARNING: Guild {ev['guild_id']} not found by bot")
                     continue
@@ -74,7 +74,7 @@ async def startup_event():
                         continue
 
                     try:
-                        personality = await bot_service._get_personality(ev['guild_id'])
+                        personality = await bot_service._get_personality(ev["guild_id"])
                     except Exception:
                         personality = None
 
@@ -93,9 +93,9 @@ async def startup_event():
                     )
 
                     if resp:
-                            await tool_send_message(bot_service, ev['guild_id'], target_channel_id, resp)
+                        await tool_send_message(bot_service, ev["guild_id"], target_channel_id, resp)
                     else:
-                        deleted = await event_service.delete_event(ev['event_id'])
+                        deleted = await event_service.delete_event(ev["event_id"])
 
             await asyncio.sleep(60)
 
@@ -110,7 +110,7 @@ async def shutdown_event():
     await event_service.close_db_pool()
     if bot_service.offense_service:
         await bot_service.offense_service.close()
-    task = getattr(app.state, 'event_checker_task', None)
+    task = getattr(app.state, "event_checker_task", None)
     if task and not task.done():
         task.cancel()
 
@@ -130,10 +130,12 @@ app.add_middleware(
     https_only=DISCORD_SESSION_HTTPS_ONLY,
 )
 
+
 @app.get("/api/auth/login")
 async def auth_login():
     auth_url = auth_service.get_authorization_url()
     return RedirectResponse(url=auth_url)
+
 
 @app.get("/api/auth/callback")
 async def auth_callback(code: Optional[str] = None, request: Request = None):
@@ -150,6 +152,7 @@ async def auth_callback(code: Optional[str] = None, request: Request = None):
 
     return RedirectResponse(url=auth_service.get_frontend_redirect_url(success=True))
 
+
 @app.get("/api/me")
 async def api_me(request: Request):
     user = request.session.get("user")
@@ -157,11 +160,13 @@ async def api_me(request: Request):
         return JSONResponse({"user": None})
     return JSONResponse({"user": user})
 
+
 @app.post("/api/logout")
 async def api_logout(request: Request):
     request.session.pop("user", None)
     request.session.pop("access_token", None)
     return JSONResponse({"ok": True})
+
 
 @app.get("/api/guilds")
 async def api_guilds(request: Request):
@@ -180,16 +185,16 @@ async def api_guilds(request: Request):
 
     available_guilds = [
         {
-            "id": guild["id"], 
-            "name": guild["name"], 
+            "id": guild["id"],
+            "name": guild["name"],
             "icon": guild.get("icon"),
             "owner": guild.get("owner", False),
-            "permissions": guild.get("permissions")
+            "permissions": guild.get("permissions"),
         }
         for guild in user_guilds
         if guild["id"] in bot_guild_ids
     ]
-    
+
     print(f"DEBUG /api/guilds: Returning {len(available_guilds)} guilds")
     for g in available_guilds:
         print(f"  - {g['name']} (owner={g.get('owner')})")
@@ -213,6 +218,7 @@ async def api_guild_channels(guild_id: str, request: Request):
     text_channels = [{"id": str(channel.id), "name": channel.name} for channel in guild.text_channels]
 
     return JSONResponse({"channels": text_channels})
+
 
 @app.post("/api/send-message")
 async def api_send_message(payload: SendMessageRequest, request: Request):
@@ -248,7 +254,14 @@ async def api_send_message(payload: SendMessageRequest, request: Request):
         raise HTTPException(status_code=500, detail=f"Error sending message: {str(e)}")
 
 
-async def _send_message_internal(guild_id: str, channel_id: str, message: Optional[str] = None, instructions: Optional[str] = None, event_details: Optional[str] = None, user: Optional[dict] = None) -> bool:
+async def _send_message_internal(
+    guild_id: str,
+    channel_id: str,
+    message: Optional[str] = None,
+    instructions: Optional[str] = None,
+    event_details: Optional[str] = None,
+    user: Optional[dict] = None,
+) -> bool:
     if not bot_service.is_ready():
         raise ValueError("Bot is not ready")
 
@@ -272,7 +285,12 @@ async def _send_message_internal(guild_id: str, channel_id: str, message: Option
     if not final_message:
         raise ValueError("No message content to send")
 
-    return await bot_service.send_message(int(channel_id), final_message, user_id=(user.get("id") if user else None), username=(user.get("username") if user else None))
+    return await bot_service.send_message(
+        int(channel_id),
+        final_message,
+        user_id=(user.get("id") if user else None),
+        username=(user.get("username") if user else None),
+    )
 
 
 @app.post("/api/guilds/{guild_id}/channels/{channel_id}/messages")

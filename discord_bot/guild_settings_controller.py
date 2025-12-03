@@ -11,6 +11,7 @@ from schemas import UpdateSettingsRequest, ContentMaturityPreferences
 
 router = APIRouter()
 
+
 @router.get("/api/guilds/{guild_id}/settings")
 async def api_get_guild_settings(guild_id: str, request: Request):
     user = request.session.get("user")
@@ -23,7 +24,7 @@ async def api_get_guild_settings(guild_id: str, request: Request):
 
     user_guilds = await auth_service.get_user_guilds(access_token)
     user_guild_ids = {str(g.get("id")) for g in user_guilds}
-    
+
     if str(guild_id) not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
@@ -33,11 +34,9 @@ async def api_get_guild_settings(guild_id: str, request: Request):
         s = settings.get("settings") if isinstance(settings, dict) else settings
         return JSONResponse(settings)
     else:
-        return JSONResponse({
-            "guild_id": guild_id,
-            "settings": {"bot_settings": {}, "role_settings": {"roles": []}},
-            "edited_at": None
-        })
+        return JSONResponse(
+            {"guild_id": guild_id, "settings": {"bot_settings": {}, "role_settings": {"roles": []}}, "edited_at": None}
+        )
 
 
 @router.post("/api/guilds/{guild_id}/settings")
@@ -52,7 +51,7 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
 
     user_guilds = await auth_service.get_user_guilds(access_token)
     user_guild_ids = {str(g.get("id")) for g in user_guilds}
-    
+
     if str(guild_id) not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
@@ -91,19 +90,21 @@ async def api_update_guild_settings(guild_id: str, payload: UpdateSettingsReques
             raise HTTPException(status_code=403, detail="Only the guild owner may modify role settings")
 
     success = await settings_service.update_settings(guild_id, settings_dict)
-    
+
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update settings")
 
     if new_nickname and new_nickname != old_nickname:
         asyncio.create_task(bot_service.announce_nickname_change(guild_id, old_nickname, new_nickname))
 
-    return JSONResponse({
-        "ok": True,
-        "message": "Settings updated successfully",
-        "guild_id": guild_id,
-        "settings": settings_dict,
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": "Settings updated successfully",
+            "guild_id": guild_id,
+            "settings": settings_dict,
+        }
+    )
 
 
 @router.delete("/api/guilds/{guild_id}/settings")
@@ -118,23 +119,20 @@ async def api_delete_guild_settings(guild_id: str, request: Request):
 
     user_guilds = await auth_service.get_user_guilds(access_token)
     user_guild_ids = {str(g.get("id")) for g in user_guilds}
-    
+
     if str(guild_id) not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
     success = await settings_service.delete_settings(guild_id)
-    
+
     if success:
-        return JSONResponse({
-            "ok": True,
-            "message": "Settings deleted successfully",
-            "guild_id": guild_id
-        })
+        return JSONResponse({"ok": True, "message": "Settings deleted successfully", "guild_id": guild_id})
     else:
         raise HTTPException(status_code=500, detail="Failed to delete settings")
 
+
 # Roles will already have some permissions via discord
-# Do we check for those to? 
+# Do we check for those to?
 # We will need separate permissions for managing the bot
 @router.get("/api/guilds/{guild_id}/roles")
 async def api_get_guild_roles(guild_id: str, request: Request):
@@ -164,14 +162,16 @@ async def api_get_guild_roles(guild_id: str, request: Request):
 
     roles_list = []
     for role in guild.roles:
-        roles_list.append({
-            "id": str(role.id),
-            "name": role.name,
-            "mentionable": bool(getattr(role, "mentionable", False)),
-            "hoist": bool(getattr(role, "hoist", False)),
-            "managed": bool(getattr(role, "managed", False)),
-            "position": int(getattr(role, "position", 0)),
-        })
+        roles_list.append(
+            {
+                "id": str(role.id),
+                "name": role.name,
+                "mentionable": bool(getattr(role, "mentionable", False)),
+                "hoist": bool(getattr(role, "hoist", False)),
+                "managed": bool(getattr(role, "managed", False)),
+                "position": int(getattr(role, "position", 0)),
+            }
+        )
 
     return JSONResponse({"roles": roles_list})
 
@@ -200,16 +200,18 @@ async def api_get_user_permissions(guild_id: str, request: Request):
     is_owner = guild_entry.get("owner", False) if guild_entry else False
 
     if is_owner:
-        return JSONResponse({
-            "is_owner": True,
-            "permissions": {
-                "change_nickname": True,
-                "change_personality": True,
-                "make_events": True,
-                "manage_proposals": True,
-            },
-            "user_roles": []
-        })
+        return JSONResponse(
+            {
+                "is_owner": True,
+                "permissions": {
+                    "change_nickname": True,
+                    "change_personality": True,
+                    "make_events": True,
+                    "manage_proposals": True,
+                },
+                "user_roles": [],
+            }
+        )
 
     if not bot_service.is_ready():
         raise HTTPException(status_code=503, detail="Bot is not ready")
@@ -227,19 +229,21 @@ async def api_get_user_permissions(guild_id: str, request: Request):
             print(f"DEBUG: Fetched member {user_id} from guild {guild_id}")
         except Exception as e:
             print(f"DEBUG: Could not fetch member {user_id}: {e}")
-    
+
     if not member:
         print(f"DEBUG: Member {user_id} not found in guild {guild_id}")
-        return JSONResponse({
-            "is_owner": False,
-            "permissions": {
-                "change_nickname": False,
-                "change_personality": False,
-                "make_events": False,
-                "manage_proposals": False,
-            },
-            "user_roles": []
-        })
+        return JSONResponse(
+            {
+                "is_owner": False,
+                "permissions": {
+                    "change_nickname": False,
+                    "change_personality": False,
+                    "make_events": False,
+                    "manage_proposals": False,
+                },
+                "user_roles": [],
+            }
+        )
 
     user_role_ids = [str(role.id) for role in member.roles]
     print(f"DEBUG: User {user_id} has roles: {user_role_ids}")
@@ -252,7 +256,7 @@ async def api_get_user_permissions(guild_id: str, request: Request):
             role_settings_data = settings_obj.get("role_settings") or {}
             if isinstance(role_settings_data, dict):
                 role_settings = role_settings_data.get("roles") or []
-    
+
     print(f"DEBUG: Found {len(role_settings)} role configurations")
 
     permissions = {
@@ -273,14 +277,10 @@ async def api_get_user_permissions(guild_id: str, request: Request):
                 if perm_name in permissions and perm_allowed:
                     permissions[perm_name] = True
                     print(f"DEBUG: Granted permission {perm_name} from role {role_name}")
-    
+
     print(f"DEBUG: Final permissions: {permissions}")
-                    
-    return JSONResponse({
-        "is_owner": False,
-        "permissions": permissions,
-        "user_roles": user_role_ids
-    })
+
+    return JSONResponse({"is_owner": False, "permissions": permissions, "user_roles": user_role_ids})
 
 
 @router.get("/api/guilds/{guild_id}/maturity-preferences")
@@ -296,25 +296,19 @@ async def api_get_maturity_preferences(guild_id: str, request: Request):
 
     user_guilds = await auth_service.get_user_guilds(access_token)
     user_guild_ids = {str(g.get("id")) for g in user_guilds}
-    
+
     if str(guild_id) not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
     settings = await settings_service.get_settings(guild_id)
-    
+
     if settings and isinstance(settings, dict):
         settings_obj = settings.get("settings") or {}
         if isinstance(settings_obj, dict):
             maturity_prefs = settings_obj.get("content_maturity_preferences") or {}
-            return JSONResponse({
-                "guild_id": guild_id,
-                "content_maturity_preferences": maturity_prefs
-            })
-    
-    return JSONResponse({
-        "guild_id": guild_id,
-        "content_maturity_preferences": {}
-    })
+            return JSONResponse({"guild_id": guild_id, "content_maturity_preferences": maturity_prefs})
+
+    return JSONResponse({"guild_id": guild_id, "content_maturity_preferences": {}})
 
 
 @router.post("/api/guilds/{guild_id}/maturity-preferences")
@@ -330,7 +324,7 @@ async def api_update_maturity_preferences(guild_id: str, preferences: ContentMat
 
     user_guilds = await auth_service.get_user_guilds(access_token)
     user_guild_ids = {str(g.get("id")) for g in user_guilds}
-    
+
     if str(guild_id) not in user_guild_ids:
         raise HTTPException(status_code=403, detail="You don't have access to this guild")
 
@@ -344,7 +338,7 @@ async def api_update_maturity_preferences(guild_id: str, preferences: ContentMat
 
     # Get existing settings
     existing_settings = await settings_service.get_settings(guild_id)
-    
+
     settings_dict = {}
     if existing_settings and isinstance(existing_settings, dict):
         settings_obj = existing_settings.get("settings") or {}
@@ -352,21 +346,21 @@ async def api_update_maturity_preferences(guild_id: str, preferences: ContentMat
             settings_dict = {
                 "bot_settings": settings_obj.get("bot_settings"),
                 "role_settings": settings_obj.get("role_settings"),
-                "content_maturity_preferences": preferences.model_dump(exclude_none=True)
+                "content_maturity_preferences": preferences.model_dump(exclude_none=True),
             }
     else:
-        settings_dict = {
-            "content_maturity_preferences": preferences.model_dump(exclude_none=True)
-        }
+        settings_dict = {"content_maturity_preferences": preferences.model_dump(exclude_none=True)}
 
     success = await settings_service.update_settings(guild_id, settings_dict)
-    
+
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update maturity preferences")
 
-    return JSONResponse({
-        "ok": True,
-        "message": "Content maturity preferences updated successfully",
-        "guild_id": guild_id,
-        "content_maturity_preferences": preferences.model_dump(exclude_none=True)
-    })
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": "Content maturity preferences updated successfully",
+            "guild_id": guild_id,
+            "content_maturity_preferences": preferences.model_dump(exclude_none=True),
+        }
+    )

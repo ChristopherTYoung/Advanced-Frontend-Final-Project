@@ -8,6 +8,7 @@ from schemas import ProposalCreateRequest, ProposalsResponse
 
 router = APIRouter()
 
+
 @router.post("/api/guilds/{guild_id}/events")
 async def api_create_guild_event(guild_id: str, payload: EventCreateRequest, request: Request):
     user = request.session.get("user")
@@ -180,6 +181,7 @@ async def api_reject_proposal(guild_id: str, proposal_id: int, request: Request)
         raise HTTPException(status_code=500, detail="Failed to delete proposal")
 
     return JSONResponse({"ok": True})
+
 
 @router.post("/api/guilds/{guild_id}/events/{event_id}/cancel")
 async def api_cancel_event(guild_id: str, event_id: int, request: Request):

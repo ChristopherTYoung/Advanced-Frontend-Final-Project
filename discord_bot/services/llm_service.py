@@ -18,7 +18,7 @@ class LLMService:
                 "name": name,
                 "description": description,
                 "parameters": parameters,
-            }
+            },
         }
         self.tools.append(tool_definition)
         self.tool_functions[name] = function
@@ -109,7 +109,9 @@ class LLMService:
 
                             for tool_call in tool_calls:
                                 function_name = tool_call.get("name") or tool_call.get("function", {}).get("name")
-                                raw_args = tool_call.get("arguments") or tool_call.get("function", {}).get("arguments", "{}")
+                                raw_args = tool_call.get("arguments") or tool_call.get("function", {}).get(
+                                    "arguments", "{}"
+                                )
                                 try:
                                     function_args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
                                 except Exception:
@@ -127,17 +129,21 @@ class LLMService:
                                     except Exception:
                                         tool_content = json.dumps({"result": str(tool_result)})
 
-                                messages.append({
-                                    "role": "tool",
-                                    "tool_call_id": tool_call_id,
-                                    "name": function_name,
-                                    "content": tool_content,
-                                })
+                                messages.append(
+                                    {
+                                        "role": "tool",
+                                        "tool_call_id": tool_call_id,
+                                        "name": function_name,
+                                        "content": tool_content,
+                                    }
+                                )
 
                             payload["messages"] = messages
                             follow = await client.post(f"{self.base_url}/chat/completions", json=payload)
                             if follow.status_code != 200:
-                                print(f"ERROR: Follow-up LLM request returned status {follow.status_code}: {follow.text}")
+                                print(
+                                    f"ERROR: Follow-up LLM request returned status {follow.status_code}: {follow.text}"
+                                )
                                 return None
 
                             follow_data = follow.json()
@@ -216,7 +222,7 @@ Respond ONLY with a JSON object in this exact format:
             prompt += f"\n\nImage URL: {image_url}\nNote: Analyze both text and image content."
 
         messages = [{"role": "user", "content": prompt}]
-            
+
         payload = {
             "model": self.model,
             "messages": messages,
@@ -226,7 +232,7 @@ Respond ONLY with a JSON object in this exact format:
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(f"{self.base_url}/chat/completions", json=payload)
-                
+
             if response.status_code == 200:
                 data = response.json()
                 if "choices" in data and len(data["choices"]) > 0:
@@ -237,19 +243,20 @@ Respond ONLY with a JSON object in this exact format:
                             content_text = content_text.split("```json")[1].split("```")[0].strip()
                         elif "```" in content_text:
                             content_text = content_text.split("```")[1].split("```")[0].strip()
-                            
+
                         result = json.loads(content_text)
 
                         return {
                             "score": int(result.get("score", 0)),
                             "issues": result.get("issues", []),
-                            "reasoning": result.get("reasoning", "")
+                            "reasoning": result.get("reasoning", ""),
                         }
                     except json.JSONDecodeError:
                         print(f"ERROR: Failed to parse moderation response as JSON: {content_text}")
                         score = 0
                         if "score" in content_text.lower():
                             import re
+
                             match = re.search(r'score["\s:]+(\d+)', content_text.lower())
                             if match:
                                 score = int(match.group(1))
@@ -259,21 +266,21 @@ Respond ONLY with a JSON object in this exact format:
                     return {"score": 0, "issues": [], "reasoning": "API error"}
 
     async def generate_discord_response(
-        self, 
-        user_message: str, 
-        username: str, 
-        is_dm: bool = False, 
-        channel_name: str = None, 
+        self,
+        user_message: str,
+        username: str,
+        is_dm: bool = False,
+        channel_name: str = None,
         guild_id: str = None,
         guild_name: str = None,
         conversation_history: Optional[List[Dict[str, str]]] = None,
         use_tools: bool = True,
-        personality: Optional[str] = None
+        personality: Optional[str] = None,
     ) -> Optional[str]:
         personality_instruction = ""
         if personality:
             personality_instruction = f"\n\nIMPORTANT PERSONALITY: {personality}\nYou MUST respond according to this personality in all your messages."
-        
+
         if is_dm:
             system_prompt = (
                 "You are a helpful Discord bot assistant. You're having a direct message conversation "
@@ -282,9 +289,13 @@ Respond ONLY with a JSON object in this exact format:
                 f"Discord servers and channels.{personality_instruction}"
             )
         else:
-            server_context = f"You are currently in the server '{guild_name}' (ID: {guild_id})" if guild_name and guild_id else "You are in a Discord server"
+            server_context = (
+                f"You are currently in the server '{guild_name}' (ID: {guild_id})"
+                if guild_name and guild_id
+                else "You are in a Discord server"
+            )
             channel_context = f" in the channel #{channel_name}" if channel_name else ""
-            
+
             system_prompt = (
                 f"You are a helpful Discord bot assistant. {server_context}{channel_context}. "
                 f"You're responding to {username}. Be friendly, helpful, and conversational. "
@@ -299,10 +310,7 @@ Respond ONLY with a JSON object in this exact format:
             )
 
         return await self.generate_response(
-            user_message, 
-            conversation_history=conversation_history,
-            system_prompt=system_prompt, 
-            use_tools=use_tools
+            user_message, conversation_history=conversation_history, system_prompt=system_prompt, use_tools=use_tools
         )
 
     def build_system_prompt(self, personality: Optional[str] = None, use_tools: bool = False) -> str:
@@ -314,13 +322,13 @@ Respond ONLY with a JSON object in this exact format:
             return (
                 "You are an assistant that can call tools to interact with Discord. "
                 "You may either: 1) call the `send_message` tool with arguments {guild_id, channel_id, message} to send a message, OR 2) return plain text in your assistant response which will be sent as-is to the channel. "
-                "Prefer concise, friendly announcements suitable for @everyone pings."
-                + personality_text
+                "Prefer concise, friendly announcements suitable for @everyone pings." + personality_text
             )
         else:
             return (
                 "You are a Discord announcement generator. Produce a concise, friendly announcement suitable for @everyone pings."
                 + personality_text
             )
+
 
 llm_service = LLMService()
