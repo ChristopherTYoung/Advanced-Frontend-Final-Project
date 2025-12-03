@@ -1,10 +1,10 @@
 import { useState } from "react"
-import type { EventCreateRequest, User, Event as SchemaEvent } from "../schemas";
+import type { EventCreateRequest, Event as SchemaEvent } from "../schemas";
 import type { QueryObserverResult, RefetchOptions, UseMutationResult } from "@tanstack/react-query";
 import { useAuth } from "../auth";
 type CreateEventFormProps = {
     selectedGuildId: string;
-    createEvent: UseMutationResult<any, Error, { guildId: string; payload: EventCreateRequest; }, unknown>,
+    createEvent: UseMutationResult<unknown, Error, { guildId: string; payload: EventCreateRequest; }, unknown>,
     refetch: (options?: RefetchOptions | undefined) => Promise<QueryObserverResult<SchemaEvent[], Error>>
 }
 export function CreateEventForm({ selectedGuildId, createEvent, refetch }: CreateEventFormProps) {
@@ -40,8 +40,8 @@ export function CreateEventForm({ selectedGuildId, createEvent, refetch }: Creat
             setEventDetails('')
             setTimeLocal('')
             await refetch()
-        } catch (err: any) {
-            setError(err?.message || 'Failed to create event')
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create event')
         }
     }
     return (
@@ -73,12 +73,12 @@ export function CreateEventForm({ selectedGuildId, createEvent, refetch }: Creat
                         </div>
 
                         <div style={{ marginTop: 8 }}>
-                            <button type="submit" disabled={Boolean((createEvent as any).isLoading) || !user}>Add Event</button>
+                            <button type="submit" disabled={createEvent.isPending || !user}>Add Event</button>
                             {!user && <div style={{ color: '#666', fontSize: 12, marginTop: 6 }}>Sign in to create events</div>}
                         </div>
 
                         {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
-                        {createEvent.error && <div style={{ color: 'red', marginTop: 8 }}>{(createEvent.error as any).message}</div>}
+                        {createEvent.error && <div style={{ color: 'red', marginTop: 8 }}>{createEvent.error.message}</div>}
                     </form>
                 </div>
             </div>

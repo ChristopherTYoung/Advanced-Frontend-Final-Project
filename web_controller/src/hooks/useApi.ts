@@ -160,7 +160,7 @@ async function fetchGuildSettings(guildId: string): Promise<GuildSettings> {
   return GuildSettingsSchema.parse(data)
 }
 
-async function updateGuildSettings(guildId: string, settings: { bot_settings?: BotSettings, role_settings?: RoleSettings, content_maturity_preferences?: ContentMaturityPreferences } | Record<string, any>) {
+async function updateGuildSettings(guildId: string, settings: { bot_settings?: BotSettings, role_settings?: RoleSettings, content_maturity_preferences?: ContentMaturityPreferences }) {
   const validated = UpdateGuildSettingsRequestSchema.parse({ settings })
 
   const response = await fetch(api(`/api/guilds/${guildId}/settings`), {
@@ -275,7 +275,7 @@ async function fetchProposals(guildId: string): Promise<Proposal[]> {
   }
   const data = await response.json()
   const arr = data.proposals || []
-  const byId: Record<number, any> = {}
+  const byId: Record<number, Proposal> = {}
   for (const p of arr) {
     try {
       const parsed = ProposalSchema.parse(p)

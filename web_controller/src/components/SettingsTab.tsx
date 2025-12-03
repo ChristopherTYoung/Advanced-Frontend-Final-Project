@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { useGuilds, useGuildSettings, useUpdateGuildSettings, useUserPermissions } from '../hooks/useApi'
+import type { RoleSettings as RoleSettingsType, ContentMaturityPreferences } from '../schemas'
 import { RoleSettings } from './RoleSettings'
 import { BotSettings } from './BotSettings'
 import { MaturitySettings } from './MaturitySettings'
@@ -56,7 +57,7 @@ export default function SettingsTab() {
     setErrorMessage('')
 
     try {
-      const payload: any = {
+      const payload: { bot_settings: { bot_nickname?: string; personality?: string }; role_settings?: RoleSettingsType; content_maturity_preferences?: ContentMaturityPreferences } = {
         bot_settings: {
           bot_nickname: nickname || undefined,
           personality: personality || undefined,

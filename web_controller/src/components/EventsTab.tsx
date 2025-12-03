@@ -18,7 +18,7 @@ export const EventsTab: React.FC = () => {
   const { data: proposals, isLoading: proposalsLoading, refetch: refetchProposals } = useProposals(selectedGuildId, !!selectedGuildId)
   const approveProposal = useApproveProposal()
   const deleteProposalMutation = useDeleteProposal()
-  const guildOptions = guilds ?? []
+  const guildOptions = useMemo(() => guilds ?? [], [guilds])
 
   React.useEffect(() => {
     if (!selectedGuildId && guildOptions.length > 0) {

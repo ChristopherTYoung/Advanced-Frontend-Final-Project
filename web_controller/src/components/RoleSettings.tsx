@@ -26,7 +26,7 @@ export function RoleSettings({selectedGuildId, roleEntries, setRoleEntries, isGu
     function addSelectedRole() {
         if (!selectedRoleToAdd) return
         const roleId = selectedRoleToAdd
-        const roleObj = guildRoles?.find((r: any) => r.id === roleId)
+        const roleObj = guildRoles?.find((r: { id: string; name: string }) => r.id === roleId)
         const roleName = roleObj?.name || roleId
         if (roleEntries.find((r) => r.role_id === roleId || r.role_name === roleName)) return
         const newEntry: RoleEntry = {
@@ -66,7 +66,7 @@ export function RoleSettings({selectedGuildId, roleEntries, setRoleEntries, isGu
                     disabled={!guildRoles || !isGuildOwner}
                 >
                     <option value="">-- Select a Role --</option>
-                    {guildRoles?.map((r: any) => (
+                    {guildRoles?.map((r: { id: string; name: string }) => (
                         <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
                 </select>

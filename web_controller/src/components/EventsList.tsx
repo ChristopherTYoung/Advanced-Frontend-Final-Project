@@ -5,10 +5,10 @@ type EventListProps = {
   proposalsLoading: boolean,
   pendingProposals: EventProposal[],
   selectedGuildId: string | null,
-  approveProposal: UseMutationResult<any, Error, ProposalMutationProps, unknown>,
+  approveProposal: UseMutationResult<unknown, Error, ProposalMutationProps, unknown>,
   refetchProposals: (options?: RefetchOptions | undefined) => Promise<QueryObserverResult<EventProposal[], Error>>,
   refetch: (options?: RefetchOptions | undefined) => Promise<QueryObserverResult<Event[], Error>>,
-  deleteProposalMutation: UseMutationResult<any, Error, ProposalMutationProps, unknown>,
+  deleteProposalMutation: UseMutationResult<unknown, Error, ProposalMutationProps, unknown>,
   approvedProposals: EventProposal[],
   canManageProposals: boolean
 }
@@ -45,11 +45,11 @@ export function EventProposalList({ proposalsLoading,
                         await approveProposal.mutateAsync({ guildId: selectedGuildId, proposalId: p.proposal_id });
                         refetchProposals();
                         refetch();
-                      } catch (err: any) {
+                      } catch (err) {
                         console.error('Approve failed', err);
                       }
                     }}
-                    disabled={Boolean((approveProposal as any).isLoading)}
+                    disabled={approveProposal.isPending}
                   >Approve</button>
                   <button
                     onClick={async () => {
@@ -62,7 +62,7 @@ export function EventProposalList({ proposalsLoading,
                       }
                     }}
                     style={{ marginLeft: 8 }}
-                    disabled={Boolean((deleteProposalMutation as any).isLoading)}
+                    disabled={deleteProposalMutation.isPending}
                   >Reject</button>
                 </div>
               )}

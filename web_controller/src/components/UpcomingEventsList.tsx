@@ -9,7 +9,7 @@ type UpcomingEventsProps = {
   eventsLoading: boolean, 
   sortedEvents: Event[], 
   selectedGuildId: string | null, 
-  cancelEvent: UseMutationResult<any, Error, EventMutationProps, unknown>, 
+  cancelEvent: UseMutationResult<unknown, Error, EventMutationProps, unknown>, 
   refetch: (options?: RefetchOptions | undefined) => Promise<QueryObserverResult<Event[], Error>>
 }
 export function UpcomingEventsList({ eventsLoading, sortedEvents, selectedGuildId, cancelEvent, refetch}: UpcomingEventsProps) {
@@ -38,7 +38,7 @@ export function UpcomingEventsList({ eventsLoading, sortedEvents, selectedGuildI
                       console.error('Cancel failed', err);
                     }
                   }}
-                  disabled={Boolean((cancelEvent as any).isLoading)}
+                  disabled={cancelEvent.isPending}
                 >Cancel</button>
               </div>
             )}
