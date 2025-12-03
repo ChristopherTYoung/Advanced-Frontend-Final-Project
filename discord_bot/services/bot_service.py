@@ -230,22 +230,26 @@ Server Rules:
 Message from user <@{message.author.id}>:
 "{message_text}"{attachment_info}
 
+IMPORTANT: Only flag messages that CLEARLY violate the rules. Normal conversation, greetings, questions, and friendly chat are acceptable and should NOT be removed.
+
 Evaluate the message:
 1. Rate its maturity level from 0-10
-2. Check if it contains any banned keywords
-3. Determine if it violates the rules
+2. Check if it contains any banned keywords (exact matches only)
+3. Determine if it CLEARLY violates the rules (score EXCEEDS {allowed_score})
 
-If the message violates the rules:
-- Call the remove_offensive_message tool
-- Provide a specific reason (e.g., "maturity score 8/10 exceeds limit of 5" or "contains banned content 'violence'")
-- Generate a warning message that mentions the user with their @mention and clearly explains what rule was violated
+ONLY call the remove_offensive_message tool if:
+- The message contains an EXACT banned keyword from the list, OR
+- The maturity score is GREATER THAN {allowed_score} (not equal to, but greater than)
 
-Required parameters for the tool:
+If the message is acceptable or borderline, DO NOT remove it. Simply respond with "Message is acceptable."
+
+Required parameters for the tool (only if removing):
 - guild_id: {guild_id}
 - channel_id: {message.channel.id}
 - message_id: {message.id}
 - user_id: {message.author.id}
 - message_content: {message.content}
+- offensive_score: your 0-10 rating
 
 If the message is acceptable, simply respond with "Message is acceptable" and do not call any tools."""
 
