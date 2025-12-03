@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const queryClient = useQueryClient()
 
     const apiBase = import.meta.env.VITE_DISCORD_BOT_URL || window.ENV?.VITE_DISCORD_BOT_URL
-    const api = useCallback((path: string) => apiBase ? `${apiBase.replace(/\/$/, '')}${path}` : `/bot${path}`, [apiBase])
+    const api = useCallback((path: string) => apiBase ? `${apiBase.replace(/\/$/, '')}${path}` : path, [apiBase])
 
     // Use React Query for /api/me with longer stale time to prevent excessive requests
     const { data: userData, isLoading } = useQuery({
