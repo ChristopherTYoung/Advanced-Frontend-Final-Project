@@ -41,6 +41,11 @@ spec:
                 secretKeyRef:
                   name: discord-bot-token
                   key: VITE_DISCORD_BOT_TOKEN
+            - name: DISCORD_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: discord-bot-secret
+                  key: DISCORD_SESSION_SECRET
             - name: FRONTEND_ORIGINS
               value: "https://discord-bot-controller.duckdns.org"
             - name: DISCORD_REDIRECT_URI
