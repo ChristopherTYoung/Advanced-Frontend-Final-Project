@@ -195,22 +195,22 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ##### Rubric Items:
 
 ##### Features:
-- Account tab
-- Notification preferences tab
-- Get message history
-- Message Management view
-  
+- Fix kube deployment errors
+- SSL certificate
+- Styling for the proposals page
+
 #### Delivered
 ##### Rubric Items:
 
 ##### Features
+- Fix kube deployment errors
+- SSL certificate
 
 ### Dec 6
 #### Estimates
 ##### Rubric Items:
   
 ##### Features:
-- Ban/Kick users (I don't know if I want this anymore. Could potentially be dangerous)
 
 #### Delivered
 ##### Rubric Items:
