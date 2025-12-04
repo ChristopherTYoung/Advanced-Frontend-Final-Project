@@ -3,17 +3,14 @@ kind: Ingress
 metadata:
   name: discord-bot-ingress
   namespace: chris-discord
-  annotations:
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /api/$2
 spec:
   ingressClassName: nginx
   rules:
     - host: discord-bot-controller.duckdns.org
       http:
         paths:
-          - path: /api(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /api
+            pathType: Prefix
             backend:
               service:
                 name: discord-bot-svc
