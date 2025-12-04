@@ -129,7 +129,7 @@ app.add_middleware(
     same_site=DISCORD_SESSION_SAMESITE,
     https_only=DISCORD_SESSION_HTTPS_ONLY,
     max_age=86400,  # 24 hours
-    domain=".duckdns.org" if "duckdns.org" in FRONTEND_ORIGINS else None,
+    domain=None,  # Let browser handle domain automatically
 )
 
 
