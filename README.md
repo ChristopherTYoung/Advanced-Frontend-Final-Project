@@ -203,7 +203,6 @@ I want to make a discord bot that manages a server for you. This discord bot wou
 ##### Rubric Items:
 
 ##### Features
-- Fix kube deployment errors
 - SSL certificate
 
 ### Dec 6
