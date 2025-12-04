@@ -1,4 +1,86 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-sql
+  namespace: chris-discord
+data:
+  init.sql: |
+    DROP TABLE IF EXISTS message CASCADE;
+    DROP TABLE IF EXISTS event CASCADE;
+    DROP TABLE IF EXISTS guild_bot_settings CASCADE;
+
+    -- Create Guild Bot Settings table
+    CREATE TABLE guild_bot_settings (
+        guild_id VARCHAR(100) PRIMARY KEY,
+        bot_settings JSON,
+        role_settings JSON,
+        content_maturity_preferences JSON,
+        edited_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
+    -- Create Message table
+    CREATE TABLE message (
+        message_id SERIAL PRIMARY KEY,
+        guild_id VARCHAR(100),
+        channel_id VARCHAR(100),
+        user_id VARCHAR(50) NOT NULL,
+        role VARCHAR(20) NOT NULL,
+        body VARCHAR(2000) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
+    -- Create indexes for better query performance
+    CREATE INDEX idx_message_guild_id ON message(guild_id);
+    CREATE INDEX idx_message_channel_id ON message(channel_id);
+    CREATE INDEX idx_guild_bot_settings_guild_id ON guild_bot_settings(guild_id);
+    CREATE INDEX idx_message_role ON message(role);
+
+    -- Create Event table
+    CREATE TABLE event (
+        event_id SERIAL PRIMARY KEY,
+        user_id VARCHAR(100) NOT NULL,
+        guild_id VARCHAR(100) NOT NULL,
+        time_of_event TIMESTAMP NOT NULL,
+        event_name VARCHAR(50) NOT NULL,
+        event_details VARCHAR(200) NOT NULL,
+        canceled TIMESTAMP DEFAULT(null)
+    );
+
+    CREATE INDEX idx_event_guild_id ON event(guild_id);
+    CREATE INDEX idx_event_user_id ON event(user_id);
+
+    CREATE TABLE event_proposal (
+        proposal_id SERIAL PRIMARY KEY,
+        user_id VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        guild_id VARCHAR(100) NOT NULL,
+        time_of_event TIMESTAMP NOT NULL,
+        event_name VARCHAR(50) NOT NULL,
+        event_details VARCHAR(200) NOT NULL,
+        approved BOOLEAN NOT NULL DEFAULT FALSE,
+        time_approved TIMESTAMP NULL,
+        event_id INTEGER NULL REFERENCES event(event_id)
+    );
+    CREATE INDEX idx_event_proposal_guild_id ON event_proposal(guild_id);
+    CREATE INDEX idx_event_proposal_user_id ON event_proposal(user_id);
+
+    -- Create Offense table
+    CREATE TABLE offense (
+        offense_id SERIAL PRIMARY KEY,
+        guild_id VARCHAR(100) NOT NULL,
+        channel_id VARCHAR(100) NOT NULL,
+        user_id VARCHAR(50),
+        body VARCHAR(2000),
+        picture BYTEA,
+        time_of_offense TIMESTAMP NOT NULL DEFAULT NOW(),
+        offensive_score INTEGER
+    );
+
+    CREATE INDEX idx_offense_guild_id ON offense(guild_id);
+    CREATE INDEX idx_offense_channel_id ON offense(channel_id);
+
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-pvc
@@ -56,10 +138,15 @@ spec:
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
       volumes:
         - name: postgres-data
           persistentVolumeClaim:
             claimName: postgres-pvc
+        - name: init-sql
+          configMap:
+            name: postgres-init-sql
 
 ---
 apiVersion: v1
