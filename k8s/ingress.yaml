@@ -3,8 +3,15 @@ kind: Ingress
 metadata:
   name: discord-bot-ingress
   namespace: chris-discord
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - discord-bot-controller.duckdns.org
+      secretName: discord-bot-tls
   rules:
     - host: discord-bot-controller.duckdns.org
       http:
@@ -23,8 +30,15 @@ kind: Ingress
 metadata:
   name: app-ingress
   namespace: chris-discord
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - discord-bot-controller.duckdns.org
+      secretName: discord-bot-tls
   rules:
     - host: discord-bot-controller.duckdns.org
       http:
