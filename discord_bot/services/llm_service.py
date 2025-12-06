@@ -200,9 +200,17 @@ class LLMService:
                     print(f"ERROR: LLM API returned status {response.status_code}: {response.text}")
                     return None
 
-        except httpx.TimeoutException:
-            print("ERROR: LLM request timed out")
-            return None
+        except httpx.TimeoutException as e:
+            print(f"ERROR: LLM request timed out after {self.timeout} seconds: {e}")
+            return "I apologize, but I'm taking too long to process your request. The AI model might be overloaded. Please try again in a moment."
+        except httpx.ConnectError as e:
+            print(f"ERROR: Failed to connect to LLM server: {e}")
+            return "I'm unable to respond right now. Please try again later."
+        except Exception as e:
+            print(f"ERROR: Unexpected error in LLM service: {e}")
+            import traceback
+            traceback.print_exc()
+            return "An unexpected error occurred. Please try again."
 
     async def moderate_content(self, content: str, image_url: Optional[str] = None) -> Dict[str, Any]:
         prompt = f"""Analyze this content for offensive, inappropriate, or harmful material. 

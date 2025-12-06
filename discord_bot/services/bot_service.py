@@ -273,14 +273,16 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
         print(f"DEBUG: Built conversation history with {len(conversation_history)} messages for DM")
 
         print(f"DEBUG: Generating LLM response for DM from {message.author.name}")
-
-        llm_response = await llm_service.generate_discord_response(
-            user_message=message.content,
-            username=message.author.name,
-            is_dm=True,
-            conversation_history=conversation_history,
-            personality=None,
-        )
+        
+        # Show typing indicator while generating response
+        async with message.channel.typing():
+            llm_response = await llm_service.generate_discord_response(
+                user_message=message.content,
+                username=message.author.name,
+                is_dm=True,
+                conversation_history=conversation_history,
+                personality=None,
+            )
 
         if llm_response:
             print(f"DEBUG: LLM response generated: {llm_response[:100]}...")
@@ -334,18 +336,20 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
             print(f"DEBUG: Using personality setting for guild {guild_id_str}: {personality[:50]}...")
 
         print(f"DEBUG: Generating LLM response for server message from {message.author.name}")
-
-        llm_response = await llm_service.generate_discord_response(
-            user_message=message.content,
-            username=message.author.name,
-            is_dm=False,
-            channel_name=message.channel.name,
-            guild_id=guild_id_str,
-            guild_name=guild.name if guild else None,
-            conversation_history=conversation_history,
-            use_tools=True,
-            personality=personality,
-        )
+        
+        # Show typing indicator while generating response
+        async with message.channel.typing():
+            llm_response = await llm_service.generate_discord_response(
+                user_message=message.content,
+                username=message.author.name,
+                is_dm=False,
+                channel_name=message.channel.name,
+                guild_id=guild_id_str,
+                guild_name=guild.name if guild else None,
+                conversation_history=conversation_history,
+                use_tools=True,
+                personality=personality,
+            )
 
         if llm_response:
             print(f"DEBUG: LLM response generated: {llm_response[:100]}...")
