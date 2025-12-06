@@ -7,7 +7,7 @@ class LLMService:
     def __init__(self, base_url: str = "http://ai-snow.reindeer-pinecone.ts.net:9292/v1", model: str = "gemma3-27b"):
         self.base_url = base_url
         self.model = model
-        self.timeout = 30.0  # 30 second timeout
+        self.timeout = 120.0  # 120 second timeout for large model responses with tool calling
         self.tools: List[Dict[str, Any]] = []
         self.tool_functions: Dict[str, Callable] = {}
 
