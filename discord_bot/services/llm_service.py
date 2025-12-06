@@ -209,6 +209,7 @@ class LLMService:
         except Exception as e:
             print(f"ERROR: Unexpected error in LLM service: {e}")
             import traceback
+
             traceback.print_exc()
             return "An unexpected error occurred. Please try again."
 

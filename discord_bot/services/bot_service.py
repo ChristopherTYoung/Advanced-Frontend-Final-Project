@@ -273,7 +273,7 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
         print(f"DEBUG: Built conversation history with {len(conversation_history)} messages for DM")
 
         print(f"DEBUG: Generating LLM response for DM from {message.author.name}")
-        
+
         # Show typing indicator while generating response
         async with message.channel.typing():
             llm_response = await llm_service.generate_discord_response(
@@ -336,7 +336,7 @@ If the message is acceptable, simply respond with "Message is acceptable" and do
             print(f"DEBUG: Using personality setting for guild {guild_id_str}: {personality[:50]}...")
 
         print(f"DEBUG: Generating LLM response for server message from {message.author.name}")
-        
+
         # Show typing indicator while generating response
         async with message.channel.typing():
             llm_response = await llm_service.generate_discord_response(
