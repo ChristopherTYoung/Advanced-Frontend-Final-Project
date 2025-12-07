@@ -234,7 +234,7 @@
 
 .form-group {
   margin-bottom: 1.5rem;
-  text-align: left;
+  text-align: center;
 }
 
 .form-group label {
@@ -415,7 +415,7 @@
 }
 
 .message-item.user-message .message-user {
-  color: #5865f2;
+  color: #b1b6f8;
 }
 
 .message-header {
@@ -746,6 +746,14 @@
   color: #fff;
 }
 
+.proposals-content {
+  background-color: #597377;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  padding: 2rem;
+  color: #fff;
+}
+
 .proposals-tab h2 {
   text-align: center;
   margin-bottom: 1.5rem;
@@ -784,9 +792,6 @@
 
 /* Proposals Container Styling */
 .proposals-container {
-  background-color: #597377;
-  border-radius: 10px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
   padding: 2rem;
   color: #fff;
 }

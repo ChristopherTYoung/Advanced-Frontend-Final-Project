@@ -32,15 +32,15 @@ export const EventsTab: React.FC = () => {
 
   return (
     <div className="events-tab">
-      <GuildSelector
-        selectedGuildId={selectedGuildId}
-        onGuildChange={setSelectedGuildId}
-        guilds={guildOptions}
-        label="Guild:"
-      />
-
       <div className="events-layout">
         <div className="events-single-box">
+          <GuildSelector
+            selectedGuildId={selectedGuildId}
+            onGuildChange={setSelectedGuildId}
+            guilds={guildOptions}
+            label="Guild:"
+          />
+          
           <div className="events-columns-inner">
             <div className="events-column">
               {canMakeEvents && (

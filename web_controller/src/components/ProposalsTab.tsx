@@ -36,14 +36,15 @@ export const ProposalsTab: React.FC = () => {
 
   return (
     <div className="proposals-tab">
-      <GuildSelector
-        selectedGuildId={selectedGuildId}
-        onGuildChange={setSelectedGuildId}
-        guilds={guildOptions}
-        label="Guild:"
-      />
+      <div className="proposals-content">
+        <GuildSelector
+          selectedGuildId={selectedGuildId}
+          onGuildChange={setSelectedGuildId}
+          guilds={guildOptions}
+          label="Guild:"
+        />
 
-      <EventProposalList
+        <EventProposalList
         proposalsLoading={proposalsLoading}
         pendingProposals={pendingProposals}
         selectedGuildId={selectedGuildId}
@@ -53,6 +54,7 @@ export const ProposalsTab: React.FC = () => {
         approvedProposals={approvedProposals}
         canManageProposals={canManageProposals}
       />
+      </div>
     </div>
   )
 }
