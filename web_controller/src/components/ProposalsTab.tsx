@@ -3,6 +3,7 @@ import { useGuilds, useUserPermissions } from '../hooks/useGuilds'
 import { useProposals, useApproveProposal, useDeleteProposal } from '../hooks/useProposals'
 import { useAuth } from '../contexts/auth'
 import { EventProposalList } from './EventProposalList'
+import { GuildSelector } from './GuildSelector'
 
 export const ProposalsTab: React.FC = () => {
   const { user } = useAuth()
@@ -35,18 +36,12 @@ export const ProposalsTab: React.FC = () => {
 
   return (
     <div className="proposals-tab">
-      <div className="form-group">
-        <label htmlFor="guild-select">Guild: </label>
-        <select
-          id="guild-select"
-          value={selectedGuildId ?? ''}
-          onChange={(e) => setSelectedGuildId(e.target.value || null)}
-        >
-          {guildOptions.map((g) => (
-            <option key={g.id} value={g.id}>{g.name}</option>
-          ))}
-        </select>
-      </div>
+      <GuildSelector
+        selectedGuildId={selectedGuildId}
+        onGuildChange={setSelectedGuildId}
+        guilds={guildOptions}
+        label="Guild:"
+      />
 
       <EventProposalList
         proposalsLoading={proposalsLoading}

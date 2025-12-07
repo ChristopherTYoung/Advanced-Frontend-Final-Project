@@ -1,4 +1,7 @@
 import { useMessages } from '../hooks/useMessages'
+import { MessageItem } from './MessageItem'
+import { EmptyState } from './EmptyState'
+import { LoadingState } from './LoadingState'
 
 export function MessagesTab() {
   const { data: messages = [], isLoading: loadingMessages, refetch: refetchMessages } = useMessages(undefined, true)
@@ -19,35 +22,24 @@ export function MessagesTab() {
 
         <div className="messages-list">
           {loadingMessages ? (
-            <div className="loading">Loading messages...</div>
+            <LoadingState message="Loading messages..." />
           ) : messages.length === 0 ? (
-            <div className="no-messages">
-              <p>No messages yet</p>
-              <p className="hint">Messages sent to your bot in server channels will appear here</p>
-            </div>
+            <EmptyState
+              message="No messages yet"
+              hint="Messages sent to your bot in server channels will appear here"
+            />
           ) : (
             messages.map((msg) => (
-              <div key={msg.id} className={`message-item ${msg.type === 'sent' ? 'bot-message' : 'user-message'}`}>
-                <div className="message-header">
-                  <span className="message-user">
-                    {msg.type === 'sent' ? '🤖 Bot' : (msg.username || 'Unknown User')}
-                  </span>
-                  <span className="message-time">
-                    {new Date(msg.timestamp).toLocaleString()}
-                  </span>
-                </div>
-                <div className="message-content">{msg.content.replace(/<@\d+>/g, '').trim()}</div>
-                {msg.guild_id && msg.guild_id !== 'DM' && (
-                  <div className="message-meta">
-                    Guild: {msg.guild_name || 'Unknown Guild'} • Channel: {msg.channel_name || 'Unknown Channel'}
-                  </div>
-                )}
-                {msg.guild_id === 'DM' && (
-                  <div className="message-meta">
-                    Direct Message
-                  </div>
-                )}
-              </div>
+              <MessageItem
+                key={msg.id}
+                username={msg.username || 'Unknown User'}
+                timestamp={msg.timestamp}
+                content={msg.content}
+                guildName={msg.guild_name}
+                channelName={msg.channel_name}
+                isDM={msg.guild_id === 'DM'}
+                isBot={msg.type === 'sent'}
+              />
             ))
           )}
         </div>

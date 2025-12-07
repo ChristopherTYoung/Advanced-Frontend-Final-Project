@@ -4,6 +4,7 @@ import { useEvents, useCreateEvent, useCancelEvent } from '../hooks/useEvents'
 import { useAuth } from '../contexts/auth'
 import { UpcomingEventsList } from './UpcomingEventsList'
 import { CreateEventForm } from './CreateEventsForm'
+import { GuildSelector } from './GuildSelector'
 
 export const EventsTab: React.FC = () => {
   const { user } = useAuth()
@@ -31,18 +32,12 @@ export const EventsTab: React.FC = () => {
 
   return (
     <div className="events-tab">
-      <div className="form-group">
-        <label htmlFor="guild-select">Guild: </label>
-        <select
-          id="guild-select"
-          value={selectedGuildId ?? ''}
-          onChange={(e) => setSelectedGuildId(e.target.value || null)}
-        >
-          {guildOptions.map((g) => (
-            <option key={g.id} value={g.id}>{g.name}</option>
-          ))}
-        </select>
-      </div>
+      <GuildSelector
+        selectedGuildId={selectedGuildId}
+        onGuildChange={setSelectedGuildId}
+        guilds={guildOptions}
+        label="Guild:"
+      />
 
       <div className="events-layout">
         <div className="events-single-box">

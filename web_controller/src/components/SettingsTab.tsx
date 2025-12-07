@@ -6,6 +6,7 @@ import type { RoleSettings as RoleSettingsType, ContentMaturityPreferences } fro
 import { RoleSettings } from './RoleSettings'
 import { BotSettings } from './BotSettings'
 import { MaturitySettings } from './MaturitySettings'
+import { GuildSelector } from './GuildSelector'
 
 type RoleEntry = {
   role_id?: string;
@@ -126,22 +127,13 @@ export default function SettingsTab() {
 
   return (
     <div className="settings-tab">
-      <div className="form-group">
-        <label htmlFor="guild-select">Select Guild:</label>
-        <select
-          id="guild-select"
-          value={selectedGuildId || ''}
-          onChange={(e) => setSelectedGuildId(e.target.value || null)}
-          disabled={guildsLoading}
-        >
-          <option value="">-- Select a Guild --</option>
-          {guilds?.map((guild) => (
-            <option key={guild.id} value={guild.id}>
-              {guild.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <GuildSelector
+        selectedGuildId={selectedGuildId}
+        onGuildChange={setSelectedGuildId}
+        guilds={guilds || []}
+        isLoading={guildsLoading}
+        label="Select Guild:"
+      />
 
       {selectedGuildId && (
         <>
