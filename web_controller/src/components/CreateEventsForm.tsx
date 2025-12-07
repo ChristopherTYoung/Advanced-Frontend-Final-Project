@@ -1,7 +1,7 @@
 import { useState } from "react"
 import type { EventCreateRequest, Event as SchemaEvent } from "../schemas";
 import type { QueryObserverResult, RefetchOptions, UseMutationResult } from "@tanstack/react-query";
-import { useAuth } from "../auth";
+import { useAuth } from "../contexts/auth";
 type CreateEventFormProps = {
     selectedGuildId: string;
     createEvent: UseMutationResult<unknown, Error, { guildId: string; payload: EventCreateRequest; }, unknown>,

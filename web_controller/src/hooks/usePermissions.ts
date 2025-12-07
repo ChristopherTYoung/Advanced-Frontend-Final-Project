@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useGuildSettings } from './useSettings'
-import { useAuth } from '../auth'
+import { useAuth } from '../contexts/auth'
 
 export type Permission = 'change_nickname' | 'change_personality' | 'make_events' | 'manage_proposals'
 

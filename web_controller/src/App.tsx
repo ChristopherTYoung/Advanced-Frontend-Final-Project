@@ -1,5 +1,5 @@
 import './App.css'
-import { useAuth } from './auth'
+import { useAuth } from './contexts/auth'
 import { useState } from 'react'
 import { HomeTab } from './components/HomeTab'
 import { SetupTab } from './components/SetupTab'

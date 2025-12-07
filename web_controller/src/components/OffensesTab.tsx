@@ -81,7 +81,7 @@ export function OffensesTab() {
                     Maturity Score: {offense.offensive_score}/10
                   </div>
                 )}
-                <div className="message-content">{offense.body}</div>
+                <div className="message-content">{offense.body?.replace(/<@\d+>/g, '').trim()}</div>
                 {offense.picture && (
                   <div style={{ marginTop: '0.5rem' }}>
                     <img 

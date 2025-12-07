@@ -36,7 +36,7 @@ export function MessagesTab() {
                     {new Date(msg.timestamp).toLocaleString()}
                   </span>
                 </div>
-                <div className="message-content">{msg.content}</div>
+                <div className="message-content">{msg.content.replace(/<@\d+>/g, '').trim()}</div>
                 {msg.guild_id && msg.guild_id !== 'DM' && (
                   <div className="message-meta">
                     Guild: {msg.guild_name || 'Unknown Guild'} • Channel: {msg.channel_name || 'Unknown Channel'}

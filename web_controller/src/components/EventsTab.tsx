@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useGuilds, useUserPermissions } from '../hooks/useGuilds'
 import { useEvents, useCreateEvent, useCancelEvent } from '../hooks/useEvents'
-import { useAuth } from '../auth'
+import { useAuth } from '../contexts/auth'
 import { UpcomingEventsList } from './UpcomingEventsList'
 import { CreateEventForm } from './CreateEventsForm'
 

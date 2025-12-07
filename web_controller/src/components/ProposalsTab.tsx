@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useGuilds, useUserPermissions } from '../hooks/useGuilds'
 import { useProposals, useApproveProposal, useDeleteProposal } from '../hooks/useProposals'
-import { useAuth } from '../auth'
+import { useAuth } from '../contexts/auth'
 import { EventProposalList } from './EventProposalList'
 
 export const ProposalsTab: React.FC = () => {
