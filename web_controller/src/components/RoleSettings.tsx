@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGuildRoles } from "../hooks/useApi";
+import { useGuildRoles } from '../hooks/useGuilds';
 
 type RoleSettingsProps = {
     selectedGuildId: string | null;

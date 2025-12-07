@@ -45,43 +45,36 @@ export function CreateEventForm({ selectedGuildId, createEvent, refetch }: Creat
         }
     }
     return (
-        <>
-            <div style={{ display: 'flex', gap: 24 }}>
-                <div style={{ flex: 1 }}>
-                    <h3>Create Event</h3>
-                    <form onSubmit={handleSubmit}>
-                        <div>
-                            <label>Event name</label>
-                            <br />
-                            <input value={eventName} onChange={(e) => setEventName(e.target.value)} />
-                        </div>
-
-                        <div>
-                            <label>Details</label>
-                            <br />
-                            <textarea value={eventDetails} onChange={(e) => setEventDetails(e.target.value)} rows={4} />
-                        </div>
-
-                        <div>
-                            <label>Time</label>
-                            <br />
-                            <input
-                                type="datetime-local"
-                                value={timeLocal}
-                                onChange={(e) => setTimeLocal(e.target.value)}
-                            />
-                        </div>
-
-                        <div style={{ marginTop: 8 }}>
-                            <button type="submit" disabled={createEvent.isPending || !user}>Add Event</button>
-                            {!user && <div style={{ color: '#666', fontSize: 12, marginTop: 6 }}>Sign in to create events</div>}
-                        </div>
-
-                        {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
-                        {createEvent.error && <div style={{ color: 'red', marginTop: 8 }}>{createEvent.error.message}</div>}
-                    </form>
+        <div className="event-form-container">
+            <h3>Create Event</h3>
+            <form onSubmit={handleSubmit}>
+                <div className="form-field">
+                    <label>Event name</label>
+                    <input value={eventName} onChange={(e) => setEventName(e.target.value)} />
                 </div>
-            </div>
-        </>
+
+                <div className="form-field">
+                    <label>Details</label>
+                    <textarea value={eventDetails} onChange={(e) => setEventDetails(e.target.value)} rows={4} />
+                </div>
+
+                <div className="form-field">
+                    <label>Time</label>
+                    <input
+                        type="datetime-local"
+                        value={timeLocal}
+                        onChange={(e) => setTimeLocal(e.target.value)}
+                    />
+                </div>
+
+                <div className="form-actions">
+                    <button type="submit" className="submit-button" disabled={createEvent.isPending || !user}>Add Event</button>
+                    {!user && <div className="info-message">Sign in to create events</div>}
+                </div>
+
+                {error && <div className="error-message">{error}</div>}
+                {createEvent.error && <div className="error-message">{createEvent.error.message}</div>}
+            </form>
+        </div>
     )
 }

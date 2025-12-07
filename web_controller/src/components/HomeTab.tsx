@@ -12,7 +12,7 @@ function CrashTest(): ReactElement {
   throw new Error('Test crash from CrashTest component')
 }
 
-export function HomeTab({ username, email, getAvatarUrl }: HomeTabProps) {
+export function HomeTab({ username, getAvatarUrl }: HomeTabProps) {
   const [crash, setCrash] = useState(false)
 
   return (
@@ -22,7 +22,6 @@ export function HomeTab({ username, email, getAvatarUrl }: HomeTabProps) {
           <img className="avatar" src={getAvatarUrl()} alt={`${username} avatar`} />
         </div>
         <h1>Welcome, {username}</h1>
-        <p className="user-email">{email}</p>
         <button onClick={() => setCrash(true)}>
           Trigger Test Error
         </button>

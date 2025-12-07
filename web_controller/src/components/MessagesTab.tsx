@@ -1,4 +1,4 @@
-import { useMessages } from '../hooks/useApi'
+import { useMessages } from '../hooks/useMessages'
 
 export function MessagesTab() {
   const { data: messages = [], isLoading: loadingMessages, refetch: refetchMessages } = useMessages(undefined, true)
@@ -30,7 +30,7 @@ export function MessagesTab() {
               <div key={msg.id} className={`message-item ${msg.type === 'sent' ? 'bot-message' : 'user-message'}`}>
                 <div className="message-header">
                   <span className="message-user">
-                    {msg.type === 'sent' ? '🤖 Bot' : msg.user_id || 'Unknown User'}
+                    {msg.type === 'sent' ? '🤖 Bot' : (msg.username || 'Unknown User')}
                   </span>
                   <span className="message-time">
                     {new Date(msg.timestamp).toLocaleString()}
@@ -39,7 +39,7 @@ export function MessagesTab() {
                 <div className="message-content">{msg.content}</div>
                 {msg.guild_id && msg.guild_id !== 'DM' && (
                   <div className="message-meta">
-                    Guild: {msg.guild_id} • Channel: {msg.channel_id}
+                    Guild: {msg.guild_name || 'Unknown Guild'} • Channel: {msg.channel_name || 'Unknown Channel'}
                   </div>
                 )}
                 {msg.guild_id === 'DM' && (

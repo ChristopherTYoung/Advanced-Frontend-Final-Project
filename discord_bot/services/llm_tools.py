@@ -101,19 +101,26 @@ async def tool_send_message(bot_service, guild_id: str, channel_id: str, message
 
 
 async def tool_propose_event(
-    bot_service, guild_id: str, user_id: str, time_of_event: str, event_name: str, event_details: Optional[str] = ""
+    bot_service,
+    guild_id: str,
+    user_id: str,
+    username: str,
+    time_of_event: str,
+    event_name: str,
+    event_details: Optional[str] = "",
 ) -> Dict[str, Any]:
     try:
-        from .event_service import event_service
+        from .proposal_service import proposal_service
 
         try:
             dt = datetime.fromisoformat(time_of_event)
         except Exception:
             return {"success": False, "error": "Invalid time_of_event format; expected ISO datetime"}
 
-        proposal_id = await event_service.create_proposal(
+        proposal_id = await proposal_service.create_proposal(
             guild_id=guild_id,
             user_id=user_id,
+            username=username,
             time_of_event=dt,
             event_name=event_name,
             event_details=event_details or "",
@@ -188,8 +195,11 @@ async def tool_remove_offensive_message(
         if bot_service.offense_service:
             await bot_service.offense_service.record_offense(
                 guild_id=guild_id,
+                guild_name=guild.name,
                 channel_id=channel_id,
+                channel_name=channel.name,
                 user_id=user_id,
+                username=message.author.name,
                 body=message_content,
                 picture=picture_data,
                 offensive_score=offensive_score,
@@ -287,11 +297,12 @@ def register_tools(llm_service, bot_service):
             "properties": {
                 "guild_id": {"type": "string", "description": "Guild ID where the event is proposed"},
                 "user_id": {"type": "string", "description": "ID of the user proposing the event"},
+                "username": {"type": "string", "description": "Username of the person proposing the event"},
                 "time_of_event": {"type": "string", "description": "ISO datetime of the proposed event"},
                 "event_name": {"type": "string", "description": "Short event title"},
                 "event_details": {"type": "string", "description": "Full event details"},
             },
-            "required": ["guild_id", "user_id", "time_of_event", "event_name"],
+            "required": ["guild_id", "user_id", "username", "time_of_event", "event_name"],
         },
         function=functools.partial(tool_propose_event, bot_service),
     )

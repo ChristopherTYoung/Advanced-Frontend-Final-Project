@@ -6,9 +6,6 @@ export function SetupTab({ botInviteUrl }: SetupTabProps) {
   return (
     <div className="setup-page">
       <div className="setup-card">
-        <h1>Bot Setup</h1>
-        <p>Add the Discord bot to your server to get started.</p>
-        
         <div className="setup-steps">
           <div className="step">
             <h3>Step 1: Invite the Bot</h3>

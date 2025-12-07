@@ -5,12 +5,13 @@ import { HomeTab } from './components/HomeTab'
 import { SetupTab } from './components/SetupTab'
 import { MessagesTab } from './components/MessagesTab'
 import EventsTab from './components/EventsTab'
+import ProposalsTab from './components/ProposalsTab'
 import SettingsTab from './components/SettingsTab'
 import { OffensesTab } from './components/OffensesTab'
 
 function App() {
   const { user, isLoading, login, logout, getAvatarUrl } = useAuth()
-  const [activeTab, setActiveTab] = useState<'home' | 'setup' | 'test' | 'messages' | 'settings' | 'events' | 'offenses'>('home')
+  const [activeTab, setActiveTab] = useState<'home' | 'setup' | 'test' | 'messages' | 'settings' | 'events' | 'proposals' | 'offenses'>('home')
 
   function handleLogin() {
     login()
@@ -66,6 +67,12 @@ function App() {
           Events
         </button>
         <button 
+          className={`tab ${activeTab === 'proposals' ? 'active' : ''}`}
+          onClick={() => setActiveTab('proposals')}
+        >
+          Proposals
+        </button>
+        <button 
           className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => setActiveTab('settings')}
         >
@@ -101,6 +108,10 @@ function App() {
 
           {activeTab === 'events' && (
             <EventsTab />
+          )}
+
+          {activeTab === 'proposals' && (
+            <ProposalsTab />
           )}
 
           {activeTab === 'settings' && (

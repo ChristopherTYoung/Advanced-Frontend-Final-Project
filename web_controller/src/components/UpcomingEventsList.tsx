@@ -13,38 +13,46 @@ type UpcomingEventsProps = {
   refetch: (options?: RefetchOptions | undefined) => Promise<QueryObserverResult<Event[], Error>>
 }
 export function UpcomingEventsList({ eventsLoading, sortedEvents, selectedGuildId, cancelEvent, refetch}: UpcomingEventsProps) {
-  return <div style={{ flex: 1 }}>
-    <h3>Upcoming Events</h3>
-    {eventsLoading ? (
-      <div>Loading...</div>
-    ) : (
-      <ul>
-        {sortedEvents.length === 0 && <li>No events</li>}
-        {sortedEvents.map((ev) => (
-          <li key={ev.event_id}>
-            <strong>{ev.event_name}</strong> — {new Date(ev.time_of_event).toLocaleString()}
-            <div>{ev.event_details}</div>
-            {ev.canceled ? (
-              <div style={{ color: 'red', fontSize: 12 }}>Canceled: {new Date(ev.canceled).toLocaleString()}</div>
-            ) : (
-              <div style={{ marginTop: 6 }}>
-                <button
-                  onClick={async () => {
-                    if (!selectedGuildId) return;
-                    try {
-                      await cancelEvent.mutateAsync({ guildId: selectedGuildId, eventId: ev.event_id });
-                      refetch();
-                    } catch (err) {
-                      console.error('Cancel failed', err);
-                    }
-                  }}
-                  disabled={cancelEvent.isPending}
-                >Cancel</button>
+  return (
+    <div className="upcoming-events-container">
+      <h3>Upcoming Events</h3>
+      {eventsLoading ? (
+        <div className="loading-message">Loading...</div>
+      ) : (
+        <ul className="events-list">
+          {sortedEvents.length === 0 && <li className="empty-message">No events</li>}
+          {sortedEvents.map((ev) => (
+            <li key={ev.event_id} className={`event-item ${ev.canceled ? 'canceled' : ''}`}>
+              <div className="event-header">
+                <strong>{ev.event_name}</strong>
+                <span className="event-time">{new Date(ev.time_of_event).toLocaleString()}</span>
               </div>
-            )}
-          </li>
-        ))}
-      </ul>
-    )}
-  </div>;
+              <div className="event-details">{ev.event_details}</div>
+              {ev.canceled ? (
+                <div className="canceled-info">Canceled: {new Date(ev.canceled).toLocaleString()}</div>
+              ) : (
+                <div className="event-actions">
+                  <button
+                    className="cancel-button"
+                    onClick={async () => {
+                      if (!selectedGuildId) return;
+                      try {
+                        await cancelEvent.mutateAsync({ guildId: selectedGuildId, eventId: ev.event_id });
+                        refetch();
+                      } catch (err) {
+                        console.error('Cancel failed', err);
+                      }
+                    }}
+                    disabled={cancelEvent.isPending}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }

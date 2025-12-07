@@ -1,5 +1,5 @@
-import { useOffenses } from '../hooks/useApi'
-import { useGuilds } from '../hooks/useApi'
+import { useGuilds } from '../hooks/useGuilds'
+import { useOffenses } from '../hooks/useOffenses'
 import { useState } from 'react'
 
 export function OffensesTab() {
@@ -63,7 +63,7 @@ export function OffensesTab() {
               <div key={offense.offense_id} className="message-item user-message">
                 <div className="message-header">
                   <span className="message-user">
-                    🚫 User: {offense.user_id}
+                    🚫 User: {offense.username || 'Unknown User'}
                   </span>
                   <span className="message-time">
                     {offense.time_of_offense ? new Date(offense.time_of_offense || "").toLocaleString() : 'Unknown time'}
@@ -97,7 +97,7 @@ export function OffensesTab() {
                   </div>
                 )}
                 <div className="message-meta">
-                  Channel: {offense.channel_id}
+                  Guild: {offense.guild_name || 'Unknown Guild'} • Channel: {offense.channel_name || 'Unknown Channel'}
                 </div>
               </div>
             ))

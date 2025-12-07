@@ -43,12 +43,15 @@ class MessageService:
         async with self.db_pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO message (guild_id, channel_id, user_id, role, body, created_at)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO message (guild_id, guild_name, channel_id, channel_name, user_id, username, role, body, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 """,
                 guild_id or "DM",
+                guild_name,
                 channel_id or "DM",
+                channel_name,
                 user_id or "Unknown",
+                username,
                 role,
                 content,
                 datetime.utcnow(),
@@ -67,7 +70,7 @@ class MessageService:
             return []
 
         async with self.db_pool.acquire() as conn:
-            query = "SELECT message_id, guild_id, channel_id, user_id, role, body, created_at FROM message WHERE 1=1"
+            query = "SELECT message_id, guild_id, guild_name, channel_id, channel_name, user_id, username, role, body, created_at FROM message WHERE 1=1"
             params = []
             param_count = 1
 
@@ -107,11 +110,11 @@ class MessageService:
                         "content": row["body"],
                         "timestamp": row["created_at"].isoformat(),
                         "user_id": row["user_id"] if row["user_id"] != "Unknown" else None,
-                        "username": None,
+                        "username": row["username"],
                         "guild_id": row["guild_id"] if row["guild_id"] != "DM" else None,
-                        "guild_name": None,
+                        "guild_name": row["guild_name"],
                         "channel_id": row["channel_id"] if row["channel_id"] != "DM" else None,
-                        "channel_name": None,
+                        "channel_name": row["channel_name"],
                     }
                 )
             return messages

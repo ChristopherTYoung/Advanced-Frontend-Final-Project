@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useGuildSettings } from './useApi'
+import { useGuildSettings } from './useSettings'
 import { useAuth } from '../auth'
 
 export type Permission = 'change_nickname' | 'change_personality' | 'make_events' | 'manage_proposals'

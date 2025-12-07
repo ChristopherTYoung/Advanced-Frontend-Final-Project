@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { useGuilds, useGuildSettings, useUpdateGuildSettings, useUserPermissions } from '../hooks/useApi'
+import { useGuilds, useUserPermissions } from '../hooks/useGuilds'
+import { useGuildSettings, useUpdateGuildSettings } from '../hooks/useSettings'
 import type { RoleSettings as RoleSettingsType, ContentMaturityPreferences } from '../schemas'
 import { RoleSettings } from './RoleSettings'
 import { BotSettings } from './BotSettings'
@@ -12,8 +13,11 @@ type RoleEntry = {
   permissions: { permission_name: string; allowed: boolean }[];
 }
 
+type SettingsSubTab = 'bot' | 'roles' | 'maturity'
+
 export default function SettingsTab() {
   const [selectedGuildId, setSelectedGuildId] = useState<string | null>(null)
+  const [activeSubTab, setActiveSubTab] = useState<SettingsSubTab>('bot')
   const [nickname, setNickname] = useState('')
   const [personality, setPersonality] = useState('')
   const [bannedContent, setBannedContent] = useState<string[]>([])
@@ -85,10 +89,43 @@ export default function SettingsTab() {
   const canChangeNickname = userPermissions?.permissions?.change_nickname || false
   const canChangePersonality = userPermissions?.permissions?.change_personality || false
 
+  const renderSubTabContent = () => {
+    switch (activeSubTab) {
+      case 'bot':
+        return (
+          <BotSettings
+            nickname={nickname}
+            setNickname={setNickname}
+            canChangeNickname={canChangeNickname}
+            personality={personality}
+            setPersonality={setPersonality}
+            canChangePersonality={canChangePersonality}
+          />
+        )
+      case 'roles':
+        return (
+          <RoleSettings
+            selectedGuildId={selectedGuildId}
+            roleEntries={roleEntries}
+            setRoleEntries={setRoleEntries}
+            isGuildOwner={isGuildOwner}
+          />
+        )
+      case 'maturity':
+        return (
+          <MaturitySettings
+            bannedContent={bannedContent}
+            setBannedContent={setBannedContent}
+            allowedMaturityScore={allowedMaturityScore}
+            setAllowedMaturityScore={setAllowedMaturityScore}
+            isGuildOwner={isGuildOwner}
+          />
+        )
+    }
+  }
+
   return (
     <div className="settings-tab">
-      <h2>Bot Settings</h2>
-      
       <div className="form-group">
         <label htmlFor="guild-select">Select Guild:</label>
         <select
@@ -112,29 +149,34 @@ export default function SettingsTab() {
             <p>Loading settings...</p>
           ) : (
             <>
-              <BotSettings
-                nickname={nickname}
-                setNickname={setNickname}
-                canChangeNickname={canChangeNickname}
-                personality={personality}
-                setPersonality={setPersonality}
-                canChangePersonality={canChangePersonality}
-              />
+              <div className="settings-sub-tabs">
+                <button
+                  className={`sub-tab-button ${activeSubTab === 'bot' ? 'active' : ''}`}
+                  onClick={() => setActiveSubTab('bot')}
+                >
+                  Bot Personality
+                </button>
+                <button
+                  className={`sub-tab-button ${activeSubTab === 'roles' ? 'active' : ''}`}
+                  onClick={() => setActiveSubTab('roles')}
+                  disabled={!isGuildOwner}
+                  title={!isGuildOwner ? 'Only guild owners can manage roles' : ''}
+                >
+                  Role Settings
+                </button>
+                <button
+                  className={`sub-tab-button ${activeSubTab === 'maturity' ? 'active' : ''}`}
+                  onClick={() => setActiveSubTab('maturity')}
+                  disabled={!isGuildOwner}
+                  title={!isGuildOwner ? 'Only guild owners can manage maturity settings' : ''}
+                >
+                  Maturity Preferences
+                </button>
+              </div>
 
-              <RoleSettings
-                selectedGuildId={selectedGuildId}
-                roleEntries={roleEntries}
-                setRoleEntries={setRoleEntries}
-                isGuildOwner={isGuildOwner}
-              />
-
-              <MaturitySettings
-                bannedContent={bannedContent}
-                setBannedContent={setBannedContent}
-                allowedMaturityScore={allowedMaturityScore}
-                setAllowedMaturityScore={setAllowedMaturityScore}
-                isGuildOwner={isGuildOwner}
-              />
+              <div className="settings-sub-content">
+                {renderSubTabContent()}
+              </div>
 
               <button
                 onClick={handleSave}

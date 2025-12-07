@@ -90,6 +90,7 @@ export type EventCreateRequest = z.infer<typeof EventCreateRequestSchema>
 export const ProposalSchema = z.object({
   proposal_id: z.number(),
   user_id: z.string(),
+  username: z.string().nullable().optional(),
   guild_id: z.string(),
   created_at: z.string(),
   time_of_event: z.string(),
@@ -105,6 +106,7 @@ export type Proposal = z.infer<typeof ProposalSchema>
 export const EventProposalSchema = z.object({
   proposal_id: z.number(),
   user_id: z.string(),
+  username: z.string().nullable().optional(),
   guild_id: z.string(),
   created_at: z.string(),
   time_of_event: z.string(),
@@ -119,6 +121,7 @@ export type EventProposal = z.infer<typeof EventProposalSchema>
 
 export const ProposalCreateRequestSchema = z.object({
   user_id: z.string(),
+  username: z.string().optional(),
   time_of_event: z.string(),
   event_name: z.string().min(1).max(50),
   event_details: z.string().max(500).optional(),
@@ -199,8 +202,11 @@ export type UpdateGuildSettingsRequest = z.infer<typeof UpdateGuildSettingsReque
 export const OffenseSchema = z.object({
   offense_id: z.number(),
   guild_id: z.string(),
+  guild_name: z.string().nullable().optional(),
   channel_id: z.string(),
+  channel_name: z.string().nullable().optional(),
   user_id: z.string().nullable(),
+  username: z.string().nullable().optional(),
   body: z.string().nullable(),
   picture: z.string().nullable().optional(),
   time_of_offense: z.string().optional(),

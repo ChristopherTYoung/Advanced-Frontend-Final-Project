@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react'
-import { useGuilds, useUserPermissions } from '../hooks/useApi'
-import { useEvents, useCreateEvent, useProposals, useApproveProposal, useDeleteProposal, useCancelEvent } from '../hooks/useApi'
+import { useGuilds, useUserPermissions } from '../hooks/useGuilds'
+import { useEvents, useCreateEvent, useCancelEvent } from '../hooks/useEvents'
 import { useAuth } from '../auth'
-import { EventProposalList } from './EventsList'
 import { UpcomingEventsList } from './UpcomingEventsList'
 import { CreateEventForm } from './CreateEventsForm'
 
@@ -15,9 +14,6 @@ export const EventsTab: React.FC = () => {
   const { data: events, isLoading: eventsLoading, refetch } = useEvents(selectedGuildId, !!selectedGuildId)
   const createEvent = useCreateEvent()
   const cancelEvent = useCancelEvent()
-  const { data: proposals, isLoading: proposalsLoading, refetch: refetchProposals } = useProposals(selectedGuildId, !!selectedGuildId)
-  const approveProposal = useApproveProposal()
-  const deleteProposalMutation = useDeleteProposal()
   const guildOptions = useMemo(() => guilds ?? [], [guilds])
 
   React.useEffect(() => {
@@ -31,24 +27,11 @@ export const EventsTab: React.FC = () => {
     return [...events].sort((a, b) => new Date(a.time_of_event).getTime() - new Date(b.time_of_event).getTime())
   }, [events])
 
-  const pendingProposals = useMemo(() => {
-    if (!proposals) return []
-    return [...proposals].filter(p => !p.approved).sort((a, b) => new Date(a.time_of_event).getTime() - new Date(b.time_of_event).getTime())
-  }, [proposals])
-
-  const approvedProposals = useMemo(() => {
-    if (!proposals) return []
-    return [...proposals].filter(p => p.approved).sort((a, b) => new Date(a.time_of_event).getTime() - new Date(b.time_of_event).getTime())
-  }, [proposals])
-
   const canMakeEvents = userPermissions?.permissions?.make_events || false
-  const canManageProposals = userPermissions?.permissions?.manage_proposals || false
 
   return (
-    <div>
-      <h2>Events</h2>
-
-      <div style={{ marginBottom: 12 }}>
+    <div className="events-tab">
+      <div className="form-group">
         <label htmlFor="guild-select">Guild: </label>
         <select
           id="guild-select"
@@ -60,38 +43,37 @@ export const EventsTab: React.FC = () => {
           ))}
         </select>
       </div>
-      {canMakeEvents && (
-        <CreateEventForm
-          selectedGuildId={selectedGuildId || ""}
-          createEvent={createEvent}
-          refetch={refetch}
-        />
-      )}
-      {!canMakeEvents && selectedGuildId && (
-        <div style={{ padding: '12px', background: '#f5f5f5', border: '1px solid #ddd', borderRadius: '4px', marginBottom: '16px' }}>
-          <p style={{ margin: 0, color: '#666' }}>You don't have permission to create events in this server.</p>
+
+      <div className="events-layout">
+        <div className="events-single-box">
+          <div className="events-columns-inner">
+            <div className="events-column">
+              {canMakeEvents && (
+                <CreateEventForm
+                  selectedGuildId={selectedGuildId || ""}
+                  createEvent={createEvent}
+                  refetch={refetch}
+                />
+              )}
+              {!canMakeEvents && selectedGuildId && (
+                <div className="permission-warning">
+                  <p>You don't have permission to create events in this server.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="events-column">
+              <UpcomingEventsList
+                eventsLoading={eventsLoading}
+                sortedEvents={sortedEvents}
+                selectedGuildId={selectedGuildId}
+                cancelEvent={cancelEvent}
+                refetch={refetch}
+              />
+            </div>
+          </div>
         </div>
-      )}
-
-      <UpcomingEventsList
-        eventsLoading={eventsLoading}
-        sortedEvents={sortedEvents}
-        selectedGuildId={selectedGuildId}
-        cancelEvent={cancelEvent}
-        refetch={refetch}
-      />
-
-      <EventProposalList
-        proposalsLoading={proposalsLoading}
-        pendingProposals={pendingProposals}
-        selectedGuildId={selectedGuildId}
-        approveProposal={approveProposal}
-        refetchProposals={refetchProposals}
-        refetch={refetch}
-        deleteProposalMutation={deleteProposalMutation}
-        approvedProposals={approvedProposals}
-        canManageProposals={canManageProposals}
-      />
+      </div>
     </div>
   )
 }

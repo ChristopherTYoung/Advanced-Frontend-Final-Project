@@ -15,8 +15,11 @@ CREATE TABLE guild_bot_settings (
 CREATE TABLE message (
     message_id SERIAL PRIMARY KEY,
     guild_id VARCHAR(100),
+    guild_name VARCHAR(100),
     channel_id VARCHAR(100),
+    channel_name VARCHAR(100),
     user_id VARCHAR(50) NOT NULL,
+    username VARCHAR(100),
     role VARCHAR(20) NOT NULL,
     body VARCHAR(2000) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
@@ -32,6 +35,7 @@ CREATE INDEX idx_message_role ON message(role);
 CREATE TABLE event (
     event_id SERIAL PRIMARY KEY,
     user_id VARCHAR(100) NOT NULL,
+    username VARCHAR(100),
     guild_id VARCHAR(100) NOT NULL,
     time_of_event TIMESTAMP NOT NULL,
     event_name VARCHAR(50) NOT NULL,
@@ -45,6 +49,7 @@ CREATE INDEX idx_event_user_id ON event(user_id);
 CREATE TABLE event_proposal (
     proposal_id SERIAL PRIMARY KEY,
     user_id VARCHAR(100) NOT NULL,
+    username VARCHAR(100),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     guild_id VARCHAR(100) NOT NULL,
     time_of_event TIMESTAMP NOT NULL,
@@ -61,8 +66,11 @@ CREATE INDEX idx_event_proposal_user_id ON event_proposal(user_id);
 CREATE TABLE offense (
     offense_id SERIAL PRIMARY KEY,
     guild_id VARCHAR(100) NOT NULL,
+    guild_name VARCHAR(100),
     channel_id VARCHAR(100) NOT NULL,
+    channel_name VARCHAR(100),
     user_id VARCHAR(50),
+    username VARCHAR(100),
     body VARCHAR(2000),
     picture BYTEA,
     time_of_offense TIMESTAMP NOT NULL DEFAULT NOW(),

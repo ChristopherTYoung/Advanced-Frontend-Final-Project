@@ -15,15 +15,23 @@ from services.message_service import message_service
 from services.settings_service import settings_service
 from services.llm_service import llm_service
 from services.event_service import event_service
+from services.proposal_service import proposal_service
 from services.offense_service import OffenseService
 from services.llm_tools import tool_send_message
-from schemas import SendMessageRequest
-from event_controller import router as event_router
-from guild_settings_controller import router as guild_settings_router
-from offense_controller import router as offense_router
+from controllers.auth_controller import router as auth_router
+from controllers.guild_controller import router as guild_router
+from controllers.message_controller import router as message_router
+from controllers.event_controller import router as event_router
+from controllers.proposal_controller import router as proposal_router
+from controllers.guild_settings_controller import router as guild_settings_router
+from controllers.offense_controller import router as offense_router
 
 app = FastAPI()
+app.include_router(auth_router)
+app.include_router(guild_router)
+app.include_router(message_router)
 app.include_router(event_router)
+app.include_router(proposal_router)
 app.include_router(guild_settings_router)
 app.include_router(offense_router)
 
@@ -36,6 +44,23 @@ DATABASE_URL = os.environ.get("DB_CONNECTION_STRING")
 bot_service.message_service = message_service
 bot_service.settings_service = settings_service
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in FRONTEND_ORIGINS.split(",") if o.strip()],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    same_site=DISCORD_SESSION_SAMESITE,
+    https_only=DISCORD_SESSION_HTTPS_ONLY,
+    max_age=86400,  # 24 hours
+    domain=None,  # Let browser handle domain automatically
+)
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -43,6 +68,10 @@ async def startup_event():
     await message_service.init_db_pool(DATABASE_URL)
     await settings_service.init_db_pool(DATABASE_URL)
     await event_service.init_db_pool(DATABASE_URL)
+    await proposal_service.init_db_pool(DATABASE_URL)
+
+    # Set up service dependencies
+    proposal_service.event_service = event_service
 
     offense_service = OffenseService(message_service.db_pool)
     bot_service.offense_service = offense_service
@@ -108,237 +137,9 @@ async def shutdown_event():
     await message_service.close_db_pool()
     await settings_service.close_db_pool()
     await event_service.close_db_pool()
+    await proposal_service.close_db_pool()
     if bot_service.offense_service:
         await bot_service.offense_service.close()
     task = getattr(app.state, "event_checker_task", None)
     if task and not task.done():
         task.cancel()
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[o.strip() for o in FRONTEND_ORIGINS.split(",") if o.strip()],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
-
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=SESSION_SECRET,
-    same_site=DISCORD_SESSION_SAMESITE,
-    https_only=DISCORD_SESSION_HTTPS_ONLY,
-    max_age=86400,  # 24 hours
-    domain=None,  # Let browser handle domain automatically
-)
-
-
-@app.get("/api/auth/login")
-async def auth_login():
-    auth_url = auth_service.get_authorization_url()
-    return RedirectResponse(url=auth_url)
-
-
-@app.get("/api/auth/callback")
-async def auth_callback(code: Optional[str] = None, request: Request = None):
-    if not code:
-        raise HTTPException(status_code=400, detail="No authorization code provided")
-
-    access_token = await auth_service.exchange_code_for_token(code)
-
-    request.session["access_token"] = access_token
-
-    user_info = await auth_service.get_user_info(access_token)
-
-    request.session["user"] = user_info
-
-    return RedirectResponse(url=auth_service.get_frontend_redirect_url(success=True))
-
-
-@app.get("/api/me")
-async def api_me(request: Request):
-    user = request.session.get("user")
-    if not user:
-        return JSONResponse({"user": None})
-    return JSONResponse({"user": user})
-
-
-@app.post("/api/logout")
-async def api_logout(request: Request):
-    request.session.pop("user", None)
-    request.session.pop("access_token", None)
-    return JSONResponse({"ok": True})
-
-
-@app.get("/api/guilds")
-async def api_guilds(request: Request):
-    access_token = request.session.get("access_token")
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated - no access token in session")
-
-    user_guilds = await auth_service.get_user_guilds(access_token)
-
-    if not bot_service.is_ready():
-        print("DEBUG: Bot is not ready, returning empty list")
-        return JSONResponse({"guilds": []})
-
-    bot_guilds = bot_service.get_guilds()
-    bot_guild_ids = {g["id"] for g in bot_guilds}
-
-    available_guilds = [
-        {
-            "id": guild["id"],
-            "name": guild["name"],
-            "icon": guild.get("icon"),
-            "owner": guild.get("owner", False),
-            "permissions": guild.get("permissions"),
-        }
-        for guild in user_guilds
-        if guild["id"] in bot_guild_ids
-    ]
-
-    print(f"DEBUG /api/guilds: Returning {len(available_guilds)} guilds")
-    for g in available_guilds:
-        print(f"  - {g['name']} (owner={g.get('owner')})")
-
-    return JSONResponse({"guilds": available_guilds})
-
-
-@app.get("/api/guilds/{guild_id}/channels")
-async def api_guild_channels(guild_id: str, request: Request):
-    access_token = request.session.get("access_token")
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    if not bot_service.is_ready():
-        raise HTTPException(status_code=503, detail="Bot is not ready")
-
-    guild = bot_service.get_guild_by_id(int(guild_id))
-    if not guild:
-        raise HTTPException(status_code=404, detail="Guild not found or bot is not in this guild")
-
-    text_channels = [{"id": str(channel.id), "name": channel.name} for channel in guild.text_channels]
-
-    return JSONResponse({"channels": text_channels})
-
-
-@app.post("/api/send-message")
-async def api_send_message(payload: SendMessageRequest, request: Request):
-    user = request.session.get("user")
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    if not bot_service.is_ready():
-        raise HTTPException(status_code=503, detail="Bot is not ready")
-
-    try:
-        result = await _send_message_internal(
-            guild_id=payload.guild_id,
-            channel_id=payload.channel_id,
-            message=payload.message,
-            instructions=payload.instructions,
-            event_details=payload.event_details,
-            user=user,
-        )
-        if result:
-            return JSONResponse({"ok": True, "message": "Message sent successfully"})
-        else:
-            raise HTTPException(status_code=500, detail="Failed to send message")
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except discord.Forbidden:
-        raise HTTPException(status_code=403, detail="Bot does not have permission to send messages in this channel")
-    except discord.HTTPException as e:
-        raise HTTPException(status_code=500, detail=f"Discord API error: {str(e)}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error sending message: {str(e)}")
-
-
-async def _send_message_internal(
-    guild_id: str,
-    channel_id: str,
-    message: Optional[str] = None,
-    instructions: Optional[str] = None,
-    event_details: Optional[str] = None,
-    user: Optional[dict] = None,
-) -> bool:
-    if not bot_service.is_ready():
-        raise ValueError("Bot is not ready")
-
-    final_message = message
-    if not final_message and not instructions:
-        raise ValueError("Either message or instructions must be provided")
-
-    if instructions:
-        prompt = instructions
-        if event_details:
-            prompt = f"{instructions}\n\nEvent details: {event_details}"
-
-        announcement = await llm_service.generate_response(
-            user_message=prompt,
-            system_prompt=llm_service.build_system_prompt(use_tools=False),
-            use_tools=False,
-        )
-
-        final_message = announcement or final_message
-
-    if not final_message:
-        raise ValueError("No message content to send")
-
-    return await bot_service.send_message(
-        int(channel_id),
-        final_message,
-        user_id=(user.get("id") if user else None),
-        username=(user.get("username") if user else None),
-    )
-
-
-@app.post("/api/guilds/{guild_id}/channels/{channel_id}/messages")
-async def api_send_message_to_channel(guild_id: str, channel_id: str, payload: SendMessageRequest, request: Request):
-    user = request.session.get("user")
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    try:
-        ok = await _send_message_internal(
-            guild_id=guild_id,
-            channel_id=channel_id,
-            message=payload.message,
-            instructions=payload.instructions,
-            event_details=payload.event_details,
-            user=user,
-        )
-        if ok:
-            return JSONResponse({"ok": True, "message": "Message sent successfully"})
-        else:
-            raise HTTPException(status_code=500, detail="Failed to send message")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/messages")
-async def api_get_messages(request: Request, limit: int = 50, message_type: str = None):
-    user = request.session.get("user")
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    limit = min(limit, 100)
-
-    messages = await message_service.get_history(limit=limit, message_type=message_type)
-
-    return JSONResponse({"messages": messages})
-
-
-@app.get("/api/messages/dm")
-async def api_get_dm_messages(request: Request, limit: int = 50):
-    user = request.session.get("user")
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    limit = min(limit, 100)
-
-    messages = await message_service.get_dm_messages(limit=limit)
-
-    return JSONResponse({"messages": messages})

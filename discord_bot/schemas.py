@@ -244,6 +244,7 @@ class EventsResponse(BaseModel):
 
 class ProposalCreateRequest(BaseModel):
     user_id: str = Field(..., description="User who proposed the event")
+    username: Optional[str] = Field(None, description="Username of the proposer")
     time_of_event: datetime = Field(..., description="Proposed event timestamp")
     event_name: str = Field(..., max_length=50)
     event_details: str = Field(..., max_length=200)

@@ -7,7 +7,7 @@ class LLMService:
     def __init__(self, base_url: str = "http://ai-snow.reindeer-pinecone.ts.net:9292/v1", model: str = "gemma3-27b"):
         self.base_url = base_url
         self.model = model
-        self.timeout = 120.0  # 120 second timeout for large model responses with tool calling
+        self.timeout = 180.0  # 180 second timeout for large model responses with tool calling
         self.tools: List[Dict[str, Any]] = []
         self.tool_functions: Dict[str, Callable] = {}
 
@@ -75,12 +75,14 @@ class LLMService:
                 "model": self.model,
                 "messages": messages,
                 "temperature": 0.7,
-                "max_tokens": 500,
+                "max_tokens": 300,
             }
 
             if use_tools and self.tools:
                 payload["tools"] = self.tools
                 payload["tool_choice"] = "auto"
+                # Increase max_tokens for tool calling to ensure complete responses
+                payload["max_tokens"] = 400
                 print(f"DEBUG: Sending {len(self.tools)} tools to LLM")
                 print(f"DEBUG: First tool structure: {json.dumps(self.tools[0], indent=2)}")
 
@@ -313,8 +315,8 @@ Respond ONLY with a JSON object in this exact format:
                 "You have access to tools:\n"
                 "- get_guilds: Get list of all servers the bot is in\n"
                 f"- get_channels: Get channels in a specific server (use guild_id: '{guild_id}' for this server)\n"
-                f"- get_message_history: Get recent message history"
-                f"- propose_event: Add an event to the proposal table with the time of event, name, and details. Also, include the name of the user that made the proposal"
+                f"- get_message_history: Get recent message history\n"
+                f"- propose_event: Create an event proposal. IMPORTANT: You must include the username parameter with the value '{username}' when calling this tool.\n"
                 f"{personality_instruction}"
             )
 
