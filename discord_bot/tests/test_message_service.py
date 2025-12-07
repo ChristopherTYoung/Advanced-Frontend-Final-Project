@@ -119,8 +119,11 @@ class TestMessageService:
                 "body": f"Message {i}",
                 "created_at": make_datetime(),
                 "user_id": "123",
+                "username": "testuser",
                 "guild_id": "DM",
+                "guild_name": None,
                 "channel_id": "DM",
+                "channel_name": None,
             }
             for i in range(5)
         ]
@@ -158,8 +161,11 @@ class TestMessageService:
                 "body": "Test",
                 "created_at": make_datetime(),
                 "user_id": "123",
+                "username": "testuser",
                 "guild_id": "DM",
+                "guild_name": None,
                 "channel_id": "DM",
+                "channel_name": None,
             }
         ]
 
@@ -186,8 +192,11 @@ class TestMessageService:
                 "body": f"Message {i}",
                 "created_at": make_datetime(),
                 "user_id": "123",
+                "username": "testuser",
                 "guild_id": "DM",
+                "guild_name": None,
                 "channel_id": "DM",
+                "channel_name": None,
             }
             for i in range(3)
         ]
@@ -276,8 +285,11 @@ class TestMessageServiceIntegration:
                 "body": "Hello",
                 "created_at": make_datetime(),
                 "user_id": "123",
+                "username": "user",
                 "guild_id": "guild_1",
+                "guild_name": "Test Guild",
                 "channel_id": "channel_1",
+                "channel_name": "test-channel",
             },
             {
                 "message_id": 2,
@@ -285,8 +297,11 @@ class TestMessageServiceIntegration:
                 "body": "Hi",
                 "created_at": make_datetime(),
                 "user_id": "bot",
+                "username": "Bot",
                 "guild_id": "guild_1",
+                "guild_name": "Test Guild",
                 "channel_id": "channel_1",
+                "channel_name": "test-channel",
             },
         ]
 
@@ -325,8 +340,11 @@ class TestMessageServiceIntegration:
                 "body": f"User {i}",
                 "created_at": make_datetime(),
                 "user_id": f"{i}",
+                "username": f"user{i}",
                 "guild_id": "guild_1",
+                "guild_name": "Test Guild",
                 "channel_id": "channel_1",
+                "channel_name": "test-channel",
             }
             for i in range(3)
         ]
