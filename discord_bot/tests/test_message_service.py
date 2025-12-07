@@ -142,8 +142,11 @@ class TestMessageService:
                 "body": "DM",
                 "created_at": make_datetime(),
                 "user_id": "123",
+                "username": "testuser",
                 "guild_id": "DM",
+                "guild_name": None,
                 "channel_id": "DM",
+                "channel_name": None,
             }
         ]
 
@@ -215,8 +218,11 @@ class TestMessageService:
                 "body": "DM",
                 "created_at": make_datetime(),
                 "user_id": "123",
+                "username": "testuser",
                 "guild_id": "DM",
+                "guild_name": None,
                 "channel_id": "DM",
+                "channel_name": None,
             }
         ]
 
